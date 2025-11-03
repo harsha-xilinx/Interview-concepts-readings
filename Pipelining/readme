@@ -1,0 +1,175 @@
+IQ. Explain the difference between instruction-level parallelism (ILP) and pipelining.
+Instruction-Level Parallelism refers to the extent to which instructions in a program can be executed simultaneously.
+It’s a property of the code and the processor architecture — how many instructions could be executed at once without violating dependencies (like data or control dependencies).
+
+Pipelining is a hardware technique used to overlap the execution of multiple instructions by dividing instruction execution into stages (like an assembly line).
+Each stage handles a different part of an instruction (Fetch, Decode, Execute, Memory, Write Back). While one instruction is being executed, the next one can be fetched, and the next decoded, etc.
+
+
+
+IQ. What limits the number of pipeline stages we can have?
+At first glance, it might seem like “more pipeline stages = faster CPU,” but in practice, there are several physical and architectural limits that constrain how deep you can make a pipeline.
+1. Pipeline Overhead (Latch/Flip-Flop Delay)
+Each pipeline stage needs registers or latches to hold intermediate results between stages, also cost of latches increases as we increase pipeline stage, because nu,ber of latchs increases in that case too.
+These latches take time to set up and propagate signals.
+If stages become too fine-grained (too short), the latch overhead becomes comparable to or larger than useful work — reducing overall performance.
+
+2. Pipeline Hazards (Dependencies)
+Deeper pipelines mean more instructions in flight, which increases hazard complexity:
+Data hazards: results needed by later instructions aren’t ready yet.
+Control hazards: branches and jumps can invalidate many pipeline stages.
+Structural hazards: multiple stages competing for the same hardware.
+The more stages you add, the more hardware and control logic you need to handle these hazards efficiently.
+
+3. Branch Penalty
+When a branch misprediction occurs, all the instructions in the pipeline after the branch must be flushed.
+The deeper the pipeline, the more cycles are wasted per misprediction.
+Example:
+A 5-stage pipeline might have a 3-cycle penalty.
+A 20-stage pipeline (like early Intel Pentium 4 designs) can have 20+ cycles of penalty.
+Thus, deeper pipelines make performance more sensitive to control flow accuracy.
+
+4. Diminishing Returns on Clock Speed
+Splitting logic into more stages can increase maximum clock frequency,
+but only up to a point — due to:
+Latch overhead,
+Clock distribution and synchronization difficulties,
+Variability in manufacturing and voltage noise (timing uncertainty).
+Beyond that point, further pipelining gives little or no clock speed benefit.
+
+5. Increased Power and Complexity
+More stages → more registers, more forwarding paths, more complex control.
+This increases power consumption, heat, and design complexity.
+High-frequency deep pipelines also have higher dynamic power due to frequent clocking.
+
+6. Instruction Dependencies and Workload Characteristics
+Some workloads don’t have enough instruction-level parallelism (ILP) to keep a deep pipeline busy.
+If there are frequent dependencies, deeper pipelines just stall more often — negating the speed gains.
+
+IQ. WAW hazard in pipeline example
+A WAW (Write After Write) hazard occurs when two instructions write to the same register (or memory location), and the later instruction completes its write before the earlier one — potentially overwriting the correct value.
+🧩 Example:
+Let’s say we have a superscalar or out-of-order processor (since WAW hazards don’t happen in a simple in-order 5-stage RISC pipeline)
+I1: ADD R1, R2, R3    ; R1 = R2 + R3
+I2: MUL R1, R4, R5    ; R1 = R4 * R5
+✅ Here, I1 writes to R1 before I2 — no WAW hazard (in-order execution ensures this).
+
+If the processor allows out-of-order execution, I2 might finish earlier than I1 (for example, because I1 is waiting on a memory access).
+
+Instruction	Operation	Write-back Cycle
+I1: ADD R1, R2, R3	Addition (slow)	Cycle 8
+I2: MUL R1, R4, R5	Multiplication (fast)	Cycle 6
+
+➡️ I2 writes to R1 before I1, even though I1 appears earlier in program order.
+That means the final value in R1 (from I2) could be overwritten incorrectly by I1.
+This is a WAW hazard.
+🛠️ How CPUs avoid WAW hazards
+
+In-order write-back:
+Force instructions to write results in program order, even if they execute out-of-order.
+Register renaming:
+Assign each write a new physical register, so two instructions writing the same logical register don’t conflict
+
+IQ. Which Hazard occur only in in-order pipelines ?
+
+Actually, none of the name hazards occur only in in-order pipelines — but some occur only in out-of-order pipelines.
+To clarify:
+RAW (Read After Write) happens in both in-order and out-of-order pipelines.
+→ It’s the most common hazard in a classic 5-stage RISC pipeline.
+
+WAR (Write After Read) and WAW (Write After Write) happen only in out-of-order (or superscalar) pipelines.
+→ Because in in-order pipelines, writes always happen in the original program order, so these cannot occur.
+Final Answer:
+The RAW (Read After Write) hazard occurs in in-order pipelines.
+
+
+                                                                                 
+
+                                                                                 +++++++++++++++++++++
+                                                                                      DATA HAZARDS
+                                                                                 +++++++++++++++++++++
+💬 Intermediate:
+How does forwarding (bypassing) resolve RAW hazards?
+Why can’t forwarding always eliminate stalls (e.g., load-use hazard)?
+How does forwarding (bypassing) resolve RAW hazards?
+How do we detect a data hazard in hardware?
+(hint: hazard detection unit logic in ID stage)
+What is register renaming and how does it remove WAR/WAW hazards?
+                                                                                 
+💬 Advanced / Microarchitecture Focus:
+Describe how a Tomasulo algorithm handles data hazards.
+In out-of-order execution, how do you maintain program order correctness when renaming registers?
+Explain how a Reorder Buffer (ROB) interacts with register renaming.
+What is the difference between physical registers and architectural registers?                                                                                 
+                                                                  
+                                                                               ++++++++++++++++++++
+                                                                                 CONTROL HAZARDS
+                                                                              +++++++++++++++++++++
+IQ.What happens on a branch misprediction, and which pipeline stages are flushed?
+When a branch is mispredicted, all instructions that entered the pipeline after the branch (i.e., fetched along the wrong path) must be flushed. In a classic 5-stage pipeline where the branch outcome is resolved in the EX stage, the IF and ID stages are flushed. The correct PC (either target or next sequential) is then loaded into the fetch stage, and instruction fetching restarts from there.
+In deeper or superscalar pipelines:
+All stages after the branch resolution stage (where misprediction is detected) and before the instruction retirement/commit stage are flushed.                                                                                
+When misprediction is detected in EX:
+
+The pipeline flushes IF and ID stages (instructions behind the branch that are not yet committed).
+The branch itself continues normally (it will write back PC, etc.).
+The correct instruction fetch begins from the right target address.
+✅ So in a classic 5-stage pipeline, the IF and ID stages are flushed on a misprediction.
+
+🧩 Scenario Setup
+Let’s say we have this sequence:
+Cycle N: Branch instruction (BNE R1, R2, LABEL)
+Cycle N+1: Next sequential instruction I1 (wrong path)
+Cycle N+2: Next sequential instruction I2 (wrong path)
+
+The branch is predicted “not taken”, but in reality, the branch should be taken.
+The misprediction is detected in the EX stage when the branch condition is actually evaluated.
+| Cycle  | IF      | ID      | EX     | MEM    | WB     | Notes                                |
+| ------ | ------- | ------- | ------ | ------ | ------ | ------------------------------------ |
+| **1**  | BRANCH  | —       | —      | —      | —      | Fetch branch                         |
+| **2**  | I1      | BRANCH  | —      | —      | —      | Branch in ID                         |
+| **3**  | I2      | I1      | BRANCH | —      | —      | Branch in EX → *resolved here*       |
+| **4**  | (flush) | (flush) | —      | BRANCH | —      | Wrong-path I1, I2 flushed            |
+| **5**  | TARGET  | —       | —      | —      | BRANCH | Fetch correct target instruction     |
+| **6**  | I_T1    | TARGET  | —      | —      | —      | Pipeline refilled along correct path |
+| **7+** | ...     | ...     | ...    | ...    | ...    | Normal execution resumes             |
+
+What happens at Cycle 3–4:
+The branch is in EX, so the CPU knows the prediction was wrong.
+It immediately:
+Flushes instructions in IF and ID (I1 and I2).
+Redirects PC to the correct target address (LABEL).
+In Cycle 4, the fetch stage is stalled or bubbled (while redirection takes effect).
+From Cycle 5, fetch begins at the correct branch target.                                                                                 
+✅ Flushed stages: IF and ID
+✅ Corrected stage: EX (where misprediction is detected)
+
+The penalty is roughly number of pipeline stages between IF and branch resolution
+
+                                                   
+IQ. What is the branch penalty?
+Answer:
+The branch penalty is the number of lost cycles due to a branch instruction — from the time the branch is fetched until the correct next instruction is known.
+Example:
+If branch resolution takes 3 cycles → branch penalty = 3 cycles.
+
+IQ. What is a Branch Target Buffer (BTB)?
+Answer:
+A Branch Target Buffer is a hardware cache that stores:
+The address of branch instructions, and
+Their predicted target addresses.
+
+IQ. What is a branch delay slot?
+A branch delay slot is an instruction immediately following a branch that is always executed, whether or not the branch is taken.
+                                                   
+IQ. Why do deeper pipelines worsen control hazards?
+Answer:
+Because the branch resolution point moves farther from the fetch stage.
+That means more instructions are fetched speculatively before the branch outcome is known — increasing the number of instructions to flush on a misprediction.
+Example:
+5-stage pipeline → 2-cycle penalty
+20-stage pipeline → up to 20-cycle penalty
+
+IQ. Why can’t control hazards be completely eliminated?
+Because some branches are inherently unpredictable (data-dependent), and even perfect prediction can’t prevent pipeline flushes on occasional mispredictions.
+                                                   
