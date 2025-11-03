@@ -172,4 +172,46 @@ Example:
 
 IQ. Why can’t control hazards be completely eliminated?
 Because some branches are inherently unpredictable (data-dependent), and even perfect prediction can’t prevent pipeline flushes on occasional mispredictions.
+
+IQ. Why does increasing pipeline depth beyond a point not increase performance?
+What pipeline depth means
+In a pipelined processor, an instruction’s execution is split into stages (like fetch, decode, execute, etc.), and multiple instructions overlap in these stages.
+A deeper pipeline means more stages, each doing less work per cycle, so the clock frequency can be higher.
+Ideally, performance ∝ (clock frequency × instructions per cycle (IPC)).
+⚙️ 2. Why deeper pipelines initially improve performance
+When you first start deepening the pipeline:
+Each stage becomes smaller and faster.
+The clock period shortens.
+The processor can run at a higher clock rate.
+So at first, the throughput improves roughly linearly with added stages.
+🧨 3. Why performance eventually stops improving (and can even get worse)
+Beyond a certain point, the costs outweigh the benefits:
+a. Pipeline overhead
+Each stage needs latches/registers to hold intermediate values.
+These introduce latency and power overhead.
+When the logic per stage gets too small, register setup and hold times dominate the cycle time.
+So even if you add stages, you can’t keep increasing the clock rate much further.
+b. Branch misprediction penalties
+In deeper pipelines, a branch misprediction causes a flush of more stages.
+Penalty = pipeline depth × clock period.
+So if your pipeline has 20+ stages (like Pentium 4), a single mispredicted branch wastes many cycles.
+This hurts average IPC, canceling out clock-speed gains.
+c. Data and control hazards
+With more stages:
+Data dependencies span more stages → more complex forwarding and stalling logic.
+Control hazards (like jumps and branches) take longer to resolve → more stalls.
+So the pipeline becomes more fragile and inefficient.
+d. Diminishing returns on clock frequency
+Physical limits (like wire delays and latch overheads) prevent you from proportionally increasing clock speed with each extra stage.
+e. Power and heat constraints
+More stages → more registers → more dynamic power.
+Past a point, thermal and power limits prevent running the chip at higher frequencies.
+🧮 4. Putting it all together
+Pipeline Depth	Clock Speed	IPC (efficiency)	Net Performance
+5 → 10 stages	↑ Clock	Slight ↓ IPC	↑ Performance
+10 → 20 stages	↑ Small	↓↓ IPC (branch penalties, stalls)	≈ Same or ↓ Performance
+20+ stages	Minimal ↑	Severe ↓ IPC	↓ Performance
+🧠 5. Real-world example
+Pentium 4 (NetBurst) used a 31-stage pipeline to hit high GHz speeds — but poor IPC and high power made it slower (per clock) than earlier Pentiums.
+Later designs (Intel Core, AMD Zen, ARM cores) returned to shorter pipelines (10–15 stages) for better overall performance and efficiency.
                                                    
