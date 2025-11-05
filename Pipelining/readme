@@ -1,3 +1,19 @@
+IQ. How does pipelining improve performance if overall latency remains same or increases?
+Pipelining typically does NOT reduce the latency of a single instruction.
+Sometimes latency even increases because of extra pipeline stages, latches, and hazards.
+But pipelining increases throughput — more instructions completed per time.
+Even though each instruction takes the same (or more) total time to finish, pipelining ensures that many instructions are in progress simultaneously, so the CPU outputs results much faster overall
+
+IQ. How does pipelining affects frequency?
+Pipelining improves fmax by reducing per-stage combinational delay.
+Suppose an operation takes 9 ns combinationally:
+No pipeline:
+    Critical path = 9 ns → fmax ≈ 111 MHz
+Insert pipeline registers to split into three 3-ns stages:
+Pipeline:
+    Critical path = 3 ns → fmax ≈ 333 MHz
+✅ fmax improved ~3×
+
 IQ. Explain the difference between instruction-level parallelism (ILP) and pipelining.
 Instruction-Level Parallelism refers to the extent to which instructions in a program can be executed simultaneously.
 It’s a property of the code and the processor architecture — how many instructions could be executed at once without violating dependencies (like data or control dependencies).
