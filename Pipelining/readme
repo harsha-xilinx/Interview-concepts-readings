@@ -1,3 +1,23 @@
+IQ. Can pipelining reduce critical path? Why?
+Yes — pipelining can reduce the critical path, and that is the primary reason it allows higher clock frequency (fmax).
+The critical path is the longest combinational delay between two registers.
+It determines the minimum clock period → limits max frequency.
+A long combinational path forces the clock to be slow.
+✅ When you pipeline, you insert registers inside that long logic chain and break it into smaller pieces → each piece has shorter delay.
+
+IQ. In which cases pipelining can degrade performance?
+Deep pipelines suffer more on mispredictions.
+If instructions frequently depend on the results of previous ones, the pipeline must stall or forward data
+Even if throughput is higher, pipelining increases:
+
+clock load (more flops)
+switching
+speculation
+→ much higher energy per instruction
+For battery-constrained systems, lower performance but higher efficiency may be preferable.
+So performance per watt could degrade.
+So the new critical path becomes shorter → higher frequency is possible
+
 IQ. How does pipelining improve performance if overall latency remains same or increases?
 Pipelining typically does NOT reduce the latency of a single instruction.
 Sometimes latency even increases because of extra pipeline stages, latches, and hazards.
@@ -231,3 +251,28 @@ Pipeline Depth	Clock Speed	IPC (efficiency)	Net Performance
 Pentium 4 (NetBurst) used a 31-stage pipeline to hit high GHz speeds — but poor IPC and high power made it slower (per clock) than earlier Pentiums.
 Later designs (Intel Core, AMD Zen, ARM cores) returned to shorter pipelines (10–15 stages) for better overall performance and efficiency.
                                                    
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+NUMERICAL PROBLEMS
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+IQ.You have a multiply-accumulate operation:
+   Y = A * B + C
+   How do you pipeline this in RTL to meet timing?
+ANS: 4 Stages
+1 stage: Data fetch
+2 stage: A*B
+3 stage: data_x + C
+4 stage: write output to register
+
+IQ. There is a pipeline design failing timing. What do you do? → Add pipeline stages / balance registers
+
+IQ. Read difference beween Software Pipelining and HLS Pepelining.
+
+IQ. What is SKID BUFFER ?
+
+IQ. 
+
+
+++++++++++++++++
+LATER
+++++++++++++++++
+IQ. Given an ALU with 3-stage pipeline, write logic to feed inputs every cycle and collect outputs.
