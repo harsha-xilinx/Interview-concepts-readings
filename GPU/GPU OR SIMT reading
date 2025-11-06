@@ -5,3 +5,271 @@ Each thread has its own context.
 A set of threads executing the same instruction are grouped as WARPS.
 A WARP is a SIMD operation formed by Hardware
 
+✅ 1. Fundamentals
+A GPU is a massively parallel processor designed to perform many simple computations at the same time.
+Originally for graphics, it is now used for:
+AI/ML
+Scientific computing
+Cryptography
+Signal processing
+Rendering
+
+Key features:
+Many simple cores
+High throughput
+Parallel execution
+Memory bandwidth oriented
+
+✅ What is SIMT?
+SIMT = Single Instruction, Multiple Threads
+It is an execution model used by modern GPUs (e.g., NVIDIA).
+Difference vs. other models:
+| Model | Meaning                              | Example    |
+| ----- | ------------------------------------ | ---------- |
+| SISD  | 1 instruction → 1 data               | Scalar CPU |
+| SIMD  | 1 instruction → multiple data        | Vector CPU |
+| SIMT  | 1 instruction → multiple threads     | GPU        |
+| MIMD  | Multiple instruction → multiple data | Multi-CPU  |
+****SIMT mixes ideas from SIMD & multi-threading.
+
+✅ 2. Why SIMT?
+GPUs need:
+High parallelism
+Efficient hardware utilization
+Simplified programming
+SIMT allows programmers to write using threads, not explicit vector instructions.
+The hardware internally executes threads in groups (warps).
+
+✅ 4. GPU Architecture Basics
+Components:
+Streaming Multiprocessors (SM / CU)
+-Execution units
+-Run warps
+Warp scheduler
+-Schedules warps to execution units
+Register file
+-Per-thread registers
+Memory hierarchy
+-Registers
+-Shared memory
+-L1/L2 cache
+-Global memory
+Arithmetic units
+ FP32/FP64
+-Tensor cores (NVIDIA)
+-ALUs
+
+
+| Level         | Type    | Scope      |
+| ------------- | ------- | ---------- |
+| Registers     | fastest | per-thread |
+| Shared memory | fast    | block      |
+| L1 cache      | fast    | SM         |
+| L2 cache      | slower  | global     |
+| Global memory | slowest | device     |
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+✅ 5. Relationship Between GPU and SIMT
+To understand their relationship, we must see how GPU hardware is designed and how SIMT controls execution.
+SIMT is not just a programming idea —
+it is the direct execution model used by GPUs to manage massive parallelism efficiently.
+
+✅ 5.1 GPU Motivation
+GPUs are designed to handle workloads such as:
+Graphics rendering
+Matrix operations
+Machine learning
+Physics simulation
+Parallel numerical compute
+These tasks benefit from executing the same operation on many data elements at once.
+This is the foundation of SIMT.
+
+✅ 5.2 SIMT in Relation to GPU Hardware
+Key relationship
+
+SIMT defines how GPU hardware executes threads:
+A GPU groups many threads into a warp and runs the same instruction across them concurrently.
+
+So:
+Software sees many independent threads
+Hardware executes them in lock-step groups (warps)
+This is the main relationship.
+
+✅ 5.3 Thread Execution Units (SMs)
+A GPU consists of multiple Streaming Multiprocessors (SMs).
+Each SM:
+
+
+Contains ALU/vector units, control logic, local cache, shared memory
+Executes warps
+If GPU has 80 SMs and each SM can support 64 warps at once:
+→ the GPU can manage 80 × 64 = 5120 warps
+with 5120 × 32 = 163,840 threads in flight simultaneously
+That’s massive parallelism.
+
+✅ 5.4 Warps: The SIMT Core Concept
+A warp is a group of (typically) 32 threads.
+Key:
+
+
+All warp threads execute same instruction
+On different data
+This defines SIMT.
+So GPU hardware:
+
+
+Fetches one instruction
+
+
+Executes it on a vector of 32 threads
+
+
+→ Similar to SIMD, but presented as “thread-based” to programmers.
+
+✅ 5.5 Why SIMT Instead of SIMD?
+SIMD:
+
+
+Programmer writes vector operations explicitly
+
+
+Harder to scale
+
+
+Complex programming
+
+
+SIMT:
+
+
+Programmer writes simple scalar threads
+
+
+Compiler/hardware groups them
+
+
+Hides vector complexity
+
+
+So SIMT is easy like multithreading, but runs like SIMD.
+
+SIMT = abstraction layer over SIMD-style hardware
+
+
+✅ 5.6 Warp Scheduling
+Hardware uses the SIMT model to schedule warps.
+Inside SM:
+
+
+Many warps resident at the same time
+
+
+Scheduler chooses which warp executes
+
+
+If one warp stalls (memory), another runs
+
+
+→ hides latency efficiently
+This is a major advantage.
+
+✅ 5.7 Control Flow and Divergence
+Because SIMT executes a warp with a single instruction stream:
+If threads in a warp execute:
+if (condition)
+    ...
+else
+    ...
+
+Some may go to “if”, some to “else”.
+Results:
+
+
+Warp executes both paths sequentially
+
+
+Threads not eligible are masked off temporarily
+
+
+Performance penalty
+
+
+This is called warp divergence.
+So SIMT strongly ties GPU performance to uniform control flow.
+
+✅ 5.8 Memory Access Relation
+SIMT encourages coalesced memory access:
+
+
+Threads in a warp should access adjacent memory locations
+
+
+If not, hardware performs separate memory transactions (slower)
+
+
+The GPU architecture supports SIMT with:
+
+
+Wide memory buses
+
+
+Shared memory
+
+
+Cache built around warp-based access
+
+
+So SIMT shapes the memory system as well.
+
+✅ 5.9 GPU Hardware Mirrors SIMT
+| Hardware Feature | SIMT Role               |
+| ---------------- | ----------------------- |
+| Warp             | Execution group         |
+| SM               | Warp runner             |
+| Scheduler        | Selects warps to run    |
+| Register file    | Indexed per thread      |
+| Shared memory    | Per block communication |
+| Divergence unit  | Masks inactive threads  |
+| Scoreboarding    | Tracks dependencies     |
+
+
+✅ 5.10 Summary of Relationship
+| Concept       | GPU                    | SIMT                        |
+| ------------- | ---------------------- | --------------------------- |
+| Threads       | Hardware executes many | Programming unit            |
+| Warp          | Hardware grouping      | Execution coherence         |
+| Scheduler     | Runs warp              | Manages thread instructions |
+| Control flow  | Affects warp           | Causes divergence           |
+| Memory access | Wide + coalesced       | Threads must align          |
+
+
+
+
+✅ In Short
+
+SIMT is the execution model that maps GPU hardware to software programming.
+
+Programmer → launches threads
+SIMT → groups threads into warps
+GPU → runs warps in SMs
+SIMT lets GPU maintain:
+
+
+High throughput
+
+
+Hardware efficiency
+
+
+Simple programming model
+
+
+
+✅ Next:
+I can now go deeper into either direction:
+A) How SIMT is implemented in hardware
+– warp schedulers, execution units, masking logic, dependency tables
+B) How SIMT affects programming & performance
+– memory coalescing, divergence patterns, occupancy tuning
+C) Comparison of SIMT vs SIMD vs MIMD
+Which one would you like next?
