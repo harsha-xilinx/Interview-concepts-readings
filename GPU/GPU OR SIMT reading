@@ -1,0 +1,7 @@
+A GPU is  a SIMD (SIMT) machine, except it's not programmed using SIMD instruction.
+It's programmed using threads (SPMD programming model)
+Each thread executes the same code but on a different piece of data.
+Each thread has its own context.
+A set of threads executing the same instruction are grouped as WARPS.
+A WARP is a SIMD operation formed by Hardware
+
