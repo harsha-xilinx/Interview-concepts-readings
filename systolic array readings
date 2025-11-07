@@ -152,4 +152,215 @@ A systolic array is a parallel architecture that performs matrix multiplications
 It’s the foundation of modern AI accelerators.
 
 
+*** in a systolic array, all PEs need to be same or can be different ?
+In a classic systolic array, all processing elements (PEs) are typically identical (homogeneous).
+This uniformity keeps the hardware structure regular, scalable, and highly efficient, which is the main reason systolic arrays are popular for dense linear algebra (e.g., matrix multiplication, convolution).
+✅ Can PEs be different?
+Yes, they can be heterogeneous, but this becomes more like a generalized dataflow architecture rather than a classical systolic array.
+
+| Property        | Homogeneous PEs | Heterogeneous PEs     |
+| --------------- | --------------- | --------------------- |
+| Typical?        | ✅ Yes           | ❌ Rare                |
+| Dataflow        | Simple, regular | Complex               |
+| Control         | Simple          | Harder                |
+| VLSI efficiency | High            | Lower                 |
+| Use case        | Matrix ops, CNN | Specialized pipelines |
+
+Short answer:
+They are usually the same. They can be different, but that’s no longer a traditional systolic array.
+If you want, I can illustrate with examples (e.g., TPU, CNN systolic array, heterogeneous variants).
+
+| Feature         | Homogeneous (Typical) | Heterogeneous (Possible but rare) |
+| --------------- | --------------------- | --------------------------------- |
+| PE type         | Same                  | Different                         |
+| Regularity      | High                  | Low                               |
+| Routing         | Simple                | Complicated                       |
+| VLSI efficiency | Excellent             | Worse                             |
+| Common?         | ✅ Yes                 | ❌ Rare                            |
+| Purpose         | Matrix ops            | Mixed pipelines                   |
+
+Real world examples:
+
+| Architecture        | PE Type       | Comment                                                                     |
+| ------------------- | ------------- | --------------------------------------------------------------------------- |
+| Google TPU          | Homogeneous   | Classic MAC systolic array                                                  |
+| NVIDIA Tensor Cores | Homogeneous   | Similar dense MAC model                                                     |
+| Some DSP pipelines  | Heterogeneous | Preprocessing + compute + postprocessing                                    |
+| FPGA designs        | Either        | Usually homogeneous for systolic, but can do heterogeneous because flexible |
+
+✅ Bottom Line
+Traditional systolic arrays use identical PEs.
+Heterogeneous PEs are possible but uncommon and deviate from the classic definition; they become more like general dataflow pipelines.
+
+
+******so can I ask interviewer that if we need heterogenous kind of architecture we can choose SIMD architecture instead of systolic array ?
+✅ Best answer
+Classic systolic arrays assume homogeneous PEs performing regular computations like MAC operations. If the application requires heterogeneous or irregular computation patterns, it may be better to use another model, such as MIMD/dataflow architectures, or SIMD if the operations are still uniform but more flexible.
+So:
+If all PEs must do the same but varied operations over time → SIMD
+If PEs must do different operations simultaneously → MIMD
+
+✅ How to phrase to an interviewer
+“Traditional systolic arrays are designed around identical PEs and very regular dataflow. If the computation becomes heterogeneous across nodes, then it’s no longer a good fit as a pure systolic array.
+| Architecture    | PE type       | Good for                  |
+| --------------- | ------------- | ------------------------- |
+| Systolic array  | Homogeneous   | Matrix ops, convolutions  |
+| SIMD            | Homogeneous   | Vectors, uniform ops      |
+| MIMD / Dataflow | Heterogeneous | Irregular / different ops |
+
+Depending on the workload, a SIMD or MIMD/dataflow architecture might be more appropriate because they naturally support flexible instruction execution.”
+
+
+************1 more query, in a 2 D systolic array, we have the control to design where our data flow post calculation. right ? Whether it'll go down or go right, also whether it'll calculate and add previous value to it or send everything down or right side
+Short answer:
+✅ Yes — in a 2-D systolic array, you (the hardware designer) control dataflow topology.
+You can decide:
+where the result/value is forwarded (→down, →right, etc.)
+whether the PE accumulates the incoming value
+whether it only forwards raw data
+But this is fixed at design-time (hardware), not chosen dynamically at runtime.
+
+✅ More details
+In a 2-D systolic array, each Processing Element (PE) typically has:
+Local compute unit (e.g., MAC)
+Local register/state
+Fixed dataflow connections to neighbors (e.g., north → south, west → east)
+When designing the systolic array you can choose:
+Where the inputs come from (left/top)
+Where outputs go (right/down)
+Whether PEs store & accumulate partial results
+Whether PEs only forward data without modification
+So dataflow directions and accumulation behavior are defined structurally in RTL/architecture.
+Example choices:
+| Behavior                          | Allowed?           |
+| --------------------------------- | ------------------ |
+| Compute + accumulate local result | ✅                  |
+| Compute + forward result          | ✅                  |
+| Forward raw input only            | ✅                  |
+| Forward result to right only      | ✅                  |
+| Forward result downward only      | ✅                  |
+| Forward to both right & down      | ✅ (if designed so) |
+
+
+✅ But: typically standardized patterns are used
+
+For matrix multiplication systolic arrays:
+
+| A matrix | flows → right |
+| B matrix | flows ↓ down |
+| Partial sums | stored/accumulated in each PE or moved diagonally |
+
+So typical flows are:
+A → → →
+↓   ↓   ↓
+PE  PE  PE
+PE  PE  PE
+PE  PE  PE
+↓   ↓   ↓
+But this is just one example.
+Other applications (FIR filters, convolutions, etc.) use different flow patterns.
+
+✅ Can PEs send data both right and down?
+Yes — if designed so.
+Some systolic MAC arrays pass:
+data A → right
+data B → down
+partial sum → diagonally
+Example: matrix multiply systolic array
+
+
+| Question                               | Answer                 |
+| -------------------------------------- | ---------------------- |
+| Can designer choose routing direction? | ✅ Yes                  |
+| Is routing dynamic at runtime?         | ❌ No                   |
+| Can PE accumulate + forward?           | ✅ Yes                  |
+| Can PE only forward?                   | ✅ Yes                  |
+| Can PE send to different neighbors?    | ✅ Yes (if designed so) |
+
+**Note For HIgh Performance each PE is also pipelined
+with this pipeline, do you mean that each PE has pipelined MAC ?
+Short answer:
+✅ Yes — in most high-performance systolic arrays, each PE contains a pipelined MAC.
+
+✅ Why each PE is pipelined
+A PE’s core operation is:
+product = a × b
+psum    = product + psum_in
+
+The multiply is the slowest part, so without pipelining, you would need a long clock period → slow design.
+By inserting pipeline registers inside the PE, you shorten the critical path and increase the operating frequency.
+Because systolic arrays have large numbers of PEs, each PE must meet timing.
+So pipelining must be inside every PE.
+Thus:
+
+If the MAC is pipelined, each PE contains its own pipeline stages.
+
+
+✅ Concept diagram
+      ┌────────────┐     ┌──────────────┐
+a --->│   MUL       │---> │  ADD         │ ---> psum_out
+b --->│ (Stage-1)   │     │ (Stage-2)    │
+      └─────┬──────┘     └─────┬────────┘
+     product_reg           psum_reg
+
+Each PE has:
+
+
+A multiplier
+
+
+Adder
+
+
+Pipeline registers
+
+
+So every PE processes data in a pipelined fashion.
+
+✅ Why not pipeline outside the PEs?
+Because systolic data is wave-propagating, every PE must:
+
+
+Receive inputs every cycle
+
+
+Produce output every cycle
+
+
+So it must be internally pipelined.
+External pipelining would disrupt data alignment across the array.
+
+✅ What does this mean physically?
+If you have an N × N systolic array:
+N × N PEs
+Each PE has a pipelined MAC
+Total MACs = N²
+
+Each MAC contributes pipeline latency, but the array remains fully utilized because throughput is 1 per cycle after the initial fill.
+
+✅ Timing Example
+Suppose each PE has a 2-stage pipeline:
+CyclePE OperationNMultiplyN+1Add + Forward Output
+Now imagine a 2D array:
+ PE(0,0) → PE(0,1) → PE(0,2)
+    ↓         ↓         ↓
+ PE(1,0) → PE(1,1) → PE(1,2)
+    ↓         ↓         ↓
+ PE(2,0) → PE(2,1) → PE(2,2)
+
+After initial latency, every cycle contains useful work in every PE.
+
+✅ Important Clarification
+✔ Pipeline depth is local to each PE
+❌ It is NOT a shared pipeline across PEs
+So if each PE is 2-stage, and you have 3 PEs in a path, the end-to-end latency is ~6 cycles (plus dataflow delays).
+But throughput is still 1 result per cycle after pipeline fill.
+
+✅ So the answer is:
+
+Yes, each PE contains its own pipelined MAC so that the entire systolic array can operate at high frequency and maintain full throughput.
+
+You can tell an interviewer:
+
+“Each PE typically contains a pipelined MAC. The pipeline stages are local to the PE, enabling the systolic array to run at a high clock rate and maintain 1 result per cycle throughput once the array is full.”
 
