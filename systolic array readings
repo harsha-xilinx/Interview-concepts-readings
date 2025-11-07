@@ -1,0 +1,155 @@
+Systolic Arrays: Specialized Accelerators.
+---------------------------------------------------------
+Goal: 
+  Design an accelerator that has simple, regular design, high concurrency, balanced computation, balancing I/O memory bandwidth. 
+  Maximize data reuse and parallel computation, minimize memory access.
+Idea: Replace single PE with an array of PE
+Helps: To maximize coputation done on a single piece of data.
+
+Difference from pipelinine ?
+These have individual PEs.
+Array structure can be non linear and multidimensional
+PE connections can be multidirectional
+PE can have local memory and execute kernels
+
+Lets' suppose, you have to inputs A and B having 3x3 matrix data and you want to multiply that.
+1 way of doing this is keep final result in PE.
+2 way of doing is move the final result somewhere else.
+
+https://www.youtube.com/watch?v=LecZfREuWvk&list=PL5Q2soXY2Zi_ZMtqz1r-GHm-zzuE1QfIg&index=9
+Time - 38:37, see  explanation of matrix multiplication in a systolic array.
+
+Advantages:
+Principle followed: efficiently used memory bandwidth.
+Specialized computation happening in PE.
+Improved efficiency, high concurrency, simple design
+Good to do more with less memory bandwidth.
+
+Downside:
+It's Specialized: Not generally applicable, because computation needs to fit the PE function organization.
+
+More info:
+Each PE can have its own data and Instruction memory
+Data memory to store partial and temporary results
+This leads to stream processing, pipeline parallelism
+More generally staged execution
+
+Papers:
+Google VPU 2021 paper
+Google TPU paper ISCA 2017 (MOST CITED PAPER IN HISTORY)
+
+
+
+Example: Matrix Multiplication on Systolic Array
+
+Let’s compute C = A × B, where:
+	•	A is M×N
+	•	B is N×P
+	•	Result C is M×P
+
+PE Operation
+
+Each PE at position (i,j) computes:
+C_{i,j} = \sum_{k=0}^{N-1} A_{i,k} × B_{k,j}
+
+⸻
+
+Dataflow
+	1.	Elements of A enter from the left (one row per cycle).
+	2.	Elements of B enter from the top (one column per cycle).
+	3.	Each PE:
+	•	Multiplies inputs A_{i,k} and B_{k,j},
+	•	Adds to the running sum,
+	•	Passes A to the next PE in the row, B down the column.
+	4.	After N cycles, every PE holds a final partial sum for one element of C.
+3. Example: Matrix Multiplication on Systolic Array
+
+Let’s compute C = A × B, where:
+	•	A is M×N
+	•	B is N×P
+	•	Result C is M×P
+
+PE Operation
+
+Each PE at position (i,j) computes:
+C_{i,j} = \sum_{k=0}^{N-1} A_{i,k} × B_{k,j}
+
+⸻
+
+Dataflow
+	1.	Elements of A enter from the left (one row per cycle).
+	2.	Elements of B enter from the top (one column per cycle).
+	3.	Each PE:
+	•	Multiplies inputs A_{i,k} and B_{k,j},
+	•	Adds to the running sum,
+	•	Passes A to the next PE in the row, B down the column.
+	4.	After N cycles, every PE holds a final partial sum for one element of C.
+
+✅ In essence:
+A systolic array is a fixed-function dataflow engine — unbeatable for linear algebra (especially matrix multiplication).
+
+
+
+💡 6. Real-World Example — Google TPU
+
+Google TPU v1 (2015)
+	•	256×256 systolic array
+	•	Each PE = 1 MAC (Multiply–Accumulate)
+	•	Total = 65,536 operations per cycle
+	•	Clocked at ~700 MHz → 46 TFLOPS (8-bit integer)
+
+A matrix → → → → 
+          [PE][PE][PE]...
+          [PE][PE][PE]...
+          [PE][PE][PE]...
+↓ ↓ ↓ ↓ B matrix
+
+Workflow:
+	•	A and B matrices stream into the array.
+	•	Each PE multiplies & accumulates locally.
+	•	Final C matrix collected at the bottom/right edge.
+
+✅ The TPU essentially performs entire neural network layers in hardware.
+
+🔩 7. Example Calculation (Numeric)
+
+Compute:
+
+C = A × B
+A = \begin{bmatrix}1 & 2\\3 & 4\end{bmatrix}, \;
+B = \begin{bmatrix}5 & 6\\7 & 8\end{bmatrix}
+
+PE(0,0) computes C_{0,0} = 1×5 + 2×7 = 19
+PE(0,1) computes C_{0,1} = 1×6 + 2×8 = 22
+PE(1,0) computes C_{1,0} = 3×5 + 4×7 = 43
+PE(1,1) computes C_{1,1} = 3×6 + 4×8 = 50
+
+Each PE stores its partial sum locally and passes operands diagonally across cycles.
+
+🔹 (B) Mapping to Convolution (CNNs)
+In CNNs, convolutions can be transformed into matrix multiplications (im2col) → then executed on a systolic array directly.
+
+So, systolic arrays accelerate:
+	•	Dense matrix ops
+	•	Convolutions
+	•	Attention mechanisms (transformers)
+
+🔹 (C) 3D Systolic Arrays
+Used in modern architectures (e.g., TPU v3, Cerebras Wafer-Scale Engine) — extend systolic communication in depth, enabling 3D data reuse.
+
+
+**** Can we use FPGA for Neural network acceleration ?  ->> Read about Microsoft Brainwave
+
+
+
+🔹 (D) Programmable Systolic Arrays
+Recent AI accelerators use reconfigurable arrays (e.g., Eyeriss, Tesla D1) that can change dataflow direction or PE roles dynamically, combining the flexibility of GPUs with systolic efficiency.
+
+
+✅ In short:
+
+A systolic array is a parallel architecture that performs matrix multiplications (and similar linear algebra) by streaming data through a grid of MAC units, achieving massive parallelism, high data reuse, and exceptional energy efficiency.
+It’s the foundation of modern AI accelerators.
+
+
+
