@@ -1,0 +1,67 @@
+A System Level Cache (SLC) is a shared cache that sits between multiple processor clusters (or cores) and the main memory (DRAM). It serves as a last-level cache — typically L3 or L4, depending on the system architecture — and is used to reduce memory access latency and bandwidth pressure on the DRAM.
+
+🧩 Hierarchy Overview
+
+A typical cache hierarchy in a modern SoC looks like:
+
+Core → L1 (private) → L2 (private/shared) → SLC → DRAM
+
+
+L1 Cache: Closest to the core, very fast but small.
+
+L2 Cache: Larger and slower than L1, often per core or shared by a small cluster.
+
+System Level Cache (SLC): Shared across multiple cores, GPUs, and accelerators.
+
+DRAM: Large but slow main memory.
+
+⚙️ Key Characteristics
+
+Shared Resource:
+
+Used by all CPU clusters and possibly other agents (like GPU, ISP, DSP, NPU).
+
+Helps reduce redundant memory accesses and improves inter-processor data sharing.
+
+Coherency Support:
+
+Maintains cache coherency across different cores and agents, often using protocols like ACE or CHI (in ARM architectures).
+
+Ensures consistent data view across all caches in the system.
+
+Performance Boost:
+
+Reduces average memory access time.
+
+Lowers DRAM bandwidth usage by servicing requests from the SLC.
+
+Power Efficiency:
+
+Accessing SLC consumes less power than accessing DRAM.
+
+Reduces off-chip memory traffic, saving energy.
+
+🏗️ In ARM Systems
+
+In ARM-based SoCs (like those using Cortex-A clusters):
+
+The System Level Cache Controller (SLC or SLC-400/500) is connected via CCI (Cache Coherent Interconnect) or CMN (Coherent Mesh Network).
+
+It provides shared caching and coherence between CPU clusters and other coherent agents.
+
+Example:
+
+Cortex-A77 Cluster ─┬──┐
+                    │  │
+GPU / NPU ──────────┘  │
+                       │
+                   System Level Cache (SLC)
+                       │
+                     DRAM
+
+📈 Benefits Summary
+Benefit	Description
+Latency reduction	Faster data access for shared data.
+Bandwidth optimization	Reduces DRAM traffic.
+Power efficiency	Saves power by lowering DRAM usage.
+Data sharing	Improves inter-agent communication.
