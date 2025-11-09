@@ -1,0 +1,77 @@
+CHI is an extension of ACE protocol
+AXI (AMBA AXI4)
+	•	Designed for high-performance, high-bandwidth memory-mapped communication between processors, memory, and peripherals.
+	•	Supports:
+	•	Multiple outstanding transactions
+	•	Out-of-order completion
+	•	Burst transfers
+But: AXI is non-coherent — it doesn’t handle cache coherence between multiple masters.
+
+✅ Used in:
+SoCs with single master or software-managed coherence (e.g., microcontrollers, simple multicore CPUs).
+
+ACE (AXI Coherency Extensions)
+
+To support hardware cache coherency, ARM added ACE on top of AXI.
+	•	Introduced snoop channels to maintain coherence across CPU caches.
+	•	Added:
+	•	AC (Address Channel)
+	•	CR (Snoop Request)
+	•	CD (Snoop Data)
+	•	R / W channels with coherence attributes.
+
+⚙️ 2. Problem — ACE Was Great, But Limited for SoC Scale-Up
+When ARM moved from mobile CPUs to server-class, HPC, and AI accelerators, SoC complexity exploded.
+ACE’s design — built around point-to-point snooping — became inefficient.
+
+👉 In short:
+AXI/ACE were great for on-chip coherent CPU clusters,
+but not for multi-cluster, multi-socket coherent systems.
+
+
+⚡ 3. Solution — CHI (Coherent Hub Interface)
+ARM introduced CHI to overcome these scalability and efficiency limits.
+CHI = Coherent Hub Interface
+A packet-based, credit-controlled, fully coherent interconnect protocol for high-performance, multi-cluster SoCs.
+
+There are currently seven issues of the CHI protocol: A to G.
+
++++++++++++====+++++++++++
+What is difference between Fully coherent, IO coherent and IO Coherent with dvm Support
++++++++++++===============
+A fully coherent agent participates completely in the system’s cache coherency protocol — just like a CPU.
+
+It can:
+	•	Issue coherent requests (reads/writes that snoop other caches)
+	•	Respond to snoop requests
+	•	Hold dirty data in its cache hierarchy
+	•	Participate in DVM (Distributed Virtual Memory) transactions (TLB invalidations, maintenance ops)
+
+✅ Examples:
+	•	ARM Cortex-A CPUs
+	•	Coherent GPU clusters (in integrated SoCs)
+	•	L2 cache coherent accelerators (like ARM’s CMN-based ML engines)
+
+(B) I/O Coherent
+
+💡 Definition
+
+An I/O coherent agent (like a DMA or PCIe device) does not maintain its own cache,
+but can access data that might be cached in CPU caches coherently — i.e., it can snoop CPU caches via the interconnect.
+
+It means:
+	•	The I/O device doesn’t keep cachelines.
+	•	But the interconnect snoops CPU caches on behalf of the device to ensure data consistency.
+
+✅ Example:
+A DMA engine reading data that a CPU has in cache.
+
+C) I/O Coherent with DVM Support
+
+💡 Definition
+
+This extends I/O coherency by adding Distributed Virtual Memory (DVM) awareness —
+meaning the I/O device also participates in address space management and TLB maintenance.
+
+DVM = Distributed Virtual Memory
+→ A mechanism that synchronizes translation structures (TLBs, page tables, ASIDs) across agents in the system
