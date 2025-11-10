@@ -67,3 +67,16 @@ Think of the DMC as the memory traffic controller,
 the PHY as the translator + signal driver,
 and the DRAM as the warehouse where data lives.
 
+
+
+🧾 6. Bonus (Advanced FPGA/SoC Integration)
+
+Once you’re confident:
+
+Integrate DMC with AXI interconnect in an FPGA SoC.
+
+Profile read/write latency and bandwidth.
+
+Experiment with DDR timing relaxation/tightening in synthesis.
+
+Explore HFT-relevant optimizations (low-latency access patterns, caching near DMC).
