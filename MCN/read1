@@ -1,0 +1,258 @@
+4.3 Address Striping
+IPWNRB A system typically stripes its address space between a number of memory channels, in this case MCN instances, to
+improve the performance by balancing the memory accesses between the memory channels
+
+Address striping must be supported by the DSU as defined in 4.3 Address Striping.
+Address striping must be supported by the NCI as defined in 4.3 Address Striping.
+
+RXDNBK Address striping is applied to the physical address in the case of the DSU .
+RLQRFP Address striping is applied to the transaction address in case of the NCI.
+
+RTJSFB The address striping capabilities of the DSU and NCI must match.
+RWVQBH The minimal address stripe granule is 256bytes.
+RVYPNQ Before address striping is applied the component performs an address decode to route the transaction to the correct
+interface or stripe group.
+
+4.3.1 Stripe algorithm
+IWJWPD The stripe algorithm used to calculate which port an address belongs to depends on the number of ports which are
+enabled in the stripe group.
+RZXGFQ Both DSU and NCI must support the following stripe algorithms:
+• Hash
+• Modulo
+
+RFCPHG Both stripe algorithms are configured using reset time sampled inputs.
+XWJTZB This allows the algorithm to be modified so that macros can be re-used between different SoC designs or the same
+SoC can be used with different memory configurations.
+
+
++++++++++++++++++
+HASH STRIPE ALGO
++++++++++++++++++
+Excellent question — short answer: no, this is not a standard general-purpose hashing algorithm — it’s a hardware-specific, deterministic hash function designed for memory striping and address interleaving.
+
+Let’s break it down clearly 👇
+
+⸻
+
+🧩 1. What “Standard Hashing” Usually Means
+
+When people talk about “hashing” in software or computer science, they typically refer to:
+	•	Data hashing for maps, checksums, or cryptography.
+Examples: CRC32, SHA-256, MurmurHash, Jenkins, FNV, etc.
+	•	The goals there are:
+	•	To evenly distribute arbitrary data.
+	•	To avoid collisions (different inputs → same hash).
+	•	To be fast and non-reversible.
+
+Those standard hash algorithms use polynomial arithmetic, rotations, and mixing constants — far more complex than simple XOR.
+
+⸻
+
+⚙️ 2. What This Algorithm Actually Does
+
+This function:
+stripe_group_port_sel(address, mask)
+	•	Be easy to implement in hardware (few gates, no loops at runtime).
+
+⸻
+
+🧠 3. Why XOR Is Used Here
+
+In hardware, XOR is the cheapest way to “mix” bits:
+	•	Each XOR can be computed in 1 logic level.
+	•	Combining multiple XORs still keeps propagation delay low.
+	•	It gives an approximately uniform distribution if addresses vary naturally.
+
+So, by XORing certain address bits:
+	•	The algorithm spreads consecutive addresses across different VMIs.
+	•	For example:
+	•	Address 0x0000_0000 maps to port 0
+	•	Address 0x0000_0100 maps to port 1
+	•	Address 0x0000_0200 maps to port 2
+	•	etc.
+
+This makes memory access load-balanced.
+
+⸻
+
+🏗️ 4. Where It’s Typically Used
+
+This algorithm (or variations of it) appear in:
+	•	ARM’s DSU (DynamIQ Shared Unit) documentation.
+	•	Memory controllers that stripe cache lines across memory banks.
+	•	Interconnect fabrics that distribute traffic to ports evenly.
+	•	NUMA and memory channel hashing.
+---------------EXAMPLE
+🧠 Purpose of the Algorithm
+
+This function determines which VMI (Virtual Machine Interface) to use for a given memory address.
+It’s a load-balancing or address-striping mechanism: the same data range is spread evenly across multiple VMIs (like channels or memory ports).
+
+When there are 2, 4, or 8 VMIs, it calculates a port index (0 to N−1) based on the address bits.
+
+⸻
+
+⚙️ Step-by-Step Explanation
+
+1️⃣ Inputs
+	•	address: 64-bit memory address (e.g., 0x12345678ABCD).
+	•	mask: 64-bit bitmask (defines which address bits are considered).
+	•	NUM_VMI_EN: number of enabled VMIs (2, 4, or 8).
+
+⸻
+
+2️⃣ Ignore low 8 bits
+
+Because striping granularity is 256 bytes, the lowest 8 bits (bit[7:0]) are ignored:
+tmp_mask = mask & 0xFFFFFFFFFFFFFF00;
+So we only consider address bits [63:8].
+
+⸻
+
+3️⃣ Apply mask to address
+mask_addr = address & tmp_mask;
+Depending on NUM_VMI_EN:
+
+Case 1: 2 VMIs
+	•	XOR all bits together → 1-bit result.
+	•	Output is either 0 or 1.
+
+Case 2: 4 VMIs
+	•	Separate bits into even and odd positions.
+	•	XOR all even bits together → gives 1 bit.
+	•	XOR all odd bits together → gives 1 bit.
+	•	Combine to get a 2-bit number (range 00–11).
+
+Case 3: 8 VMIs
+	•	Group bits into triplets (bit 0–2, 3–5, 6–8, etc.).
+	•	XOR bits that fall into the same “mod 3” group.
+	•	Combine to get a 3-bit number (range 000–111).
+
+⸻
+
+💡 Example Walkthrough
+
+Let’s assume:
+Parameter                          Value
+NUM_VMI_EN                           4
+address                      0x0000_0000_0000_12C0
+mask                         0xFFFF_FFFF_FFFF_FF00
+
+Step 1: Ignore bits [7:0]
+
+So we use address bits [63:8]:
+address = 0x12C0 → binary: 0001 0010 1100 0000
+Step 2: Apply mask
+mask_addr = address & mask = 0x0000_0000_0000_1200
+Binary (bits 15–8): 0001 0010
+
+Step 3: XOR logic for 4 VMIs
+	•	Even bits (positions 8,10,12,14): 0,1,0,0 → XOR = 1
+	•	Odd bits  (positions 9,11,13,15): 0,0,1,0 → XOR = 1
+
+Combine:
+port_select = (odd XOR result << 1) | even XOR result
+= (1 << 1) | 1 = 3 (binary 11)
+
+✅ So this address maps to port 3 (VMI #3).
+
+
+With this document, can you help me understand MCN does address shuttering or address striping ?
+
+Great question — based on the MCN architecture specification you provided, here’s a clear explanation:
+
+⸻
+
+🧠 What MCN Does: Address Striping vs. Address Shuttering
+
+The MCN (Memory Controller Node) performs address striping, but also uses a mechanism called address shuttering as a post-processing step to clean up (“compact”) the address space after striping.
+Let’s unpack that distinction.
+
+⸻
+
+🧩 1. Address Striping — The Primary Function
+
+The MCN supports address striping to distribute memory accesses evenly across multiple memory channels (MCNs).
+From the specification:
+
+“A system typically stripes its address space between a number of memory channels, in this case MCN instances, to improve the performance by balancing the memory accesses between the memory channels.” ￼
+
+Key details:
+	•	Address striping happens when 2 or more master ports are grouped into a stripe group.
+	•	The DSU (core cluster) and NCI (NoC interface) both use striping to spread load evenly ￼.
+	•	Two stripe algorithms are defined:
+	•	Hash algorithm for 2, 4, or 8 VMIs (using XOR mixing) ￼.
+	•	Modulo algorithm for 3 or 6 VMIs (bit selection and modulo-based calculation) ￼.
+
+This confirms MCN implements address striping as a key design feature — its purpose is performance balancing.
+
+⸻
+
+🧮 2. Address Shuttering — A Secondary Cleanup Stage
+
+Later in the document (section 4.3.2 “MCN outbound address”), there’s mention of address shuttering:
+
+“When applying address striping there is a requirement to remove certain address bits from the address of the outbound transaction to close the holes which are introduced by the striping.” ￼
+
+This means that after the address has been striped (i.e., distributed across multiple MCNs), there are “holes” in the address map — because some bits are used only to choose which MCN to go to.
+The address shutter logic removes those bits before the address goes to DRAM, compacting it back into a contiguous space.
+
+Software programs an address_shutter register to select which bits to keep or exclude from the outgoing address. The specification explicitly defines it as:
+
+“Software uses the address_shutter register to select the bits to include and exclude from the output address.” ￼
+
+And the appendix clarifies:
+
+“address_shutter … bit select field for all of the incoming address bits. Used to close holes created due to upstream striping.” ￼
+
+So, address shuttering = bit compaction, not distribution.
+
+⸻
+
+⚙️ 3. Relationship Between the Two
+Feature                   Purpose                                                  Where It Happens                 Mechanism
+Address Striping     Distribute addresses across MCNs (channels)             Before memory scheduling            Hash or modulo algorithm on address bits
+Address Shuttering     Remove stripe bits (“holes”) to make the address continuous again  After MSF & SLC, before memory scheduler address_shutter register logic shifts b
+
+In short:
+	•	Striping = spreading traffic.
+	•	Shuttering = cleaning up address space after spreading.
+
+🏁 ✅ Final Answer
+
+The MCN performs address striping as its primary addressing mechanism.
+However, it also implements address shuttering as a supporting feature to compact the striped addresses before sending them to the memory controller.
+
+So, MCN does both:
+	•	Address striping — for performance/load balancing.
+	•	Address shuttering — for address space compaction.
+
+But conceptually, MCN is fundamentally an address-striping component; shuttering is an auxiliary step that ensures correct address continuity post-striping.
+
+
++-----------------+        +-------------------+        +--------------------+        +----------------------+
+|  Memory Request | -----> |  Address Striping | -----> |  Address Shuttering | -----> |  Memory Controller   |
++-----------------+        +-------------------+        +--------------------+        +----------------------+
+
+Description:
+1. Memory Request:
+   - Incoming address request from DSU or NCI.
+
+2. Address Striping:
+   - Distributes memory requests across multiple MCN instances (channels).
+   - Uses Hash or Modulo algorithm based on the number of enabled VMIs.
+
+3. Address Shuttering:
+   - Removes stripe bits from the address to "close holes" created by striping.
+   - Compact address is then forwarded to DRAM via memory scheduler.
+
+4. Memory Controller:
+   - Receives the compacted (shuttered) address and executes the memory access.
+
+
+
+                            
+
+
+
+
