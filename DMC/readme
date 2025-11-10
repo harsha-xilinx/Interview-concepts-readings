@@ -42,3 +42,28 @@ how is DMC connected to a memory, can you draw diagram ?
              │ • Clock, CKE, Reset            │
              └────────────────────────────────┘
 
+
+
+| Layer                               | Function                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **CPU / GPU / DMA / NPU**           | Generate memory requests (reads/writes).                                                                                                 |
+| **Interconnect (AXI / CHI)**        | Routes and arbitrates requests from multiple masters to the DMC.                                                                         |
+| **DMC (Dynamic Memory Controller)** | Translates memory transactions into DRAM protocol commands, manages timing, QoS, and refresh.                                            |
+| **DDR PHY (via DFI)**               | Converts controller’s logical signals into the **physical electrical signals** (differential clock, DQ, DQS, etc.) required by the DRAM. |
+| **DRAM Device**                     | Stores the actual data in dynamic cells that must be refreshed periodically.                                                             |
+
+
+
+| Path                           | Signal Examples                                             | Direction              |
+| ------------------------------ | ----------------------------------------------------------- | ---------------------- |
+| **Interconnect → DMC**         | AXI/CHI: `ARADDR`, `AWADDR`, `WDATA`, `RDATA`, `READY`      | Bidirectional          |
+| **DMC → PHY (DFI interface)**  | DFI: `dfi_address`, `dfi_command`, `dfi_wdata`, `dfi_rdata` | Bidirectional          |
+| **PHY → DRAM (physical pins)** | DDR: `A[n]`, `BA`, `DQ`, `DQS`, `RAS`, `CAS`, `WE`, `CLK`   | Bidirectional / Output |
+
+
+💡 Analogy
+
+Think of the DMC as the memory traffic controller,
+the PHY as the translator + signal driver,
+and the DRAM as the warehouse where data lives.
+
