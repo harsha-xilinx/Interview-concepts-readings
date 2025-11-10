@@ -1,0 +1,44 @@
+how is DMC connected to a memory, can you draw diagram ?
+
+               ┌───────────────────────────────┐
+               │         CPU / GPU / NPU       │
+               └──────────────┬────────────────┘
+                              │
+                              ▼
+                 ┌──────────────────────────┐
+                 │   SoC Interconnect / MCN  │
+                 │   (AXI / CHI Fabric)      │
+                 └──────────────┬────────────┘
+                                │
+                                ▼
+          ┌──────────────────────────────────────────┐
+          │       Dynamic Memory Controller (DMC)     │
+          │------------------------------------------ │
+          │ • Address Decoding / Mapping              │
+          │ • Command Scheduling / Reordering         │
+          │ • Timing Control (tRCD, tRP, etc.)        │
+          │ • Refresh / Power Management              │
+          │ • ECC / QoS / Arbitration                 │
+          └──────────────┬────────────────────────────┘
+                         │
+                         ▼
+              ┌──────────────────────────┐
+              │ DDR PHY Interface (DFI)  │
+              │--------------------------│
+              │ • Signal Training / Init │
+              │ • Timing Alignment        │
+              │ • Write/Read leveling     │
+              └──────────────┬────────────┘
+                             │
+                             ▼
+             ┌────────────────────────────────┐
+             │       DRAM Device(s)            │
+             │ (DDR4 / LPDDR4 / DDR5 / HBM)   │
+             │--------------------------------│
+             │ • Data lines  (DQ[0:63])       │
+             │ • Address lines (A[0:15])      │
+             │ • Bank/Row/Col control         │
+             │ • Command signals (RAS, CAS)   │
+             │ • Clock, CKE, Reset            │
+             └────────────────────────────────┘
+
