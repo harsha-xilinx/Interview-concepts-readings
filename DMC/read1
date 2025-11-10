@@ -1,0 +1,120 @@
+So, inputs to DMC will be AXI/CHI only correct
+🧩 1. The Short Answer
+
+✅ Yes, the DMC typically receives AXI, AHB, or CHI transactions — depending on the system architecture and generation of the interconnect.
+
+It doesn’t receive raw memory commands directly (like ACT, READ, WRITE).
+Instead, it takes high-level read/write transactions and translates them into DDR command sequences internally.
+
+| Input Protocol                                  | Common Use                     | Description                                                                                                                 |
+| ----------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| **AXI4 (Advanced eXtensible Interface)**        | Most common in modern SoCs     | 5-channel protocol used between CPU/DMAs and the memory controller. Almost all FPGA DMC IPs (Xilinx, Intel, etc.) use AXI4. |
+| **AHB (Advanced High-performance Bus)**         | Legacy or simpler systems      | Simpler, non-burst protocol. Found in older microcontrollers or embedded SoCs.                                              |
+| **CHI (Coherent Hub Interface)**                | ARMv8.2+ / Neoverse-class SoCs | Used in coherent interconnects. The DMC integrates with CHI through a **coherent bridge** (e.g., CMN-700 → DMC-620).        |
+| **Native Interface (Custom Command Interface)** | Rare / custom RTL DMCs         | Some simple DMCs have a custom “read/write” handshake instead of a bus. Used in FPGA test designs.                          |
+
+⚙️ 3. Internal Translation Path (AXI → DDR)
+
+Inside the DMC, this happens:
+
+AXI/CHI Interface
+       ↓
+Command Decoder / Address Mapper
+       ↓
+Scheduler / Timing Engine
+       ↓
+DFI Interface (DDR PHY)
+       ↓
+DDR Device
+
+So:
+The input side (AXI/CHI) deals with memory transactions.
+The output side (DFI/PHY) deals with electrical DDR commands.
+
+
+🧠 3. DMC Front-End (Protocol Layer)
+Role:
+
+The front-end receives memory requests from masters over AXI or other interconnects.
+
+Key Operations:
+
+Command Queueing: AXI requests are queued, reordered, and prioritized.
+
+Address Decoding: Logical addresses are translated to Bank, Row, Column addresses.
+
+Transaction Splitting: Large bursts may be split to align with DRAM row/column boundaries.
+
+QoS Management: Handles multiple masters with priority and bandwidth control.
+
+
+⚙️ 4. DMC Back-End (Scheduler + Command Generator)
+Role:
+
+Schedules DRAM commands according to timing rules and memory state.
+
+Key Operations:
+
+Command Scheduling
+
+Issues ACTIVATE → READ/WRITE → PRECHARGE sequences.
+
+Ensures timing constraints like tRCD, tRP, tFAW, and tRRD.
+
+Row Management
+
+Tracks open rows per bank.
+
+Implements open-page or close-page policies.
+
+Command Encoding
+
+Converts abstract requests into JEDEC-standard commands (ACT, RD, WR, PRE, REF).
+
+⚡ 5. DFI Interface (DMC ↔ DDR PHY)
+DFI (DDR PHY Interface)
+
+A standardized interface between the controller and PHY (Physical Layer).
+It carries:
+
+Command Bus: ACT, RD, WR, PRE, REF
+
+Address/Bank Bus: Row/Column/Bank addresses
+
+Control Signals: CS, RAS, CAS, WE, ODT, CKE
+
+Data Interface: Write data and read data strobes (DQ/DQS)
+
+Example Timing:
+
+When a READ command is issued:
+Cycle N   : Controller drives ACTIVATE (Row)
+Cycle N+tRCD : Controller drives READ with column address
+Cycle N+tRCD+tCL : Data is returned on DQ lines from DRAM
+
+
+🔌 6. DDR PHY (Physical Layer)
+Role:
+
+Converts DFI signals into actual DDR electrical signals that drive the memory devices.
+
+Key Responsibilities:
+
+Serialization/Deserialization (SerDes) for data paths
+
+Clocking and Delay Calibration (DLL/PLL)
+
+Training and Leveling (write leveling, read leveling, DQS gating)
+
+Timing Alignment between DQS (strobe) and DQ (data)
+
+Signals Driven:
+
+DQ: Data lines (bidirectional)
+
+DQS: Data strobe for timing alignment
+
+ADDR, BA, RAS#, CAS#, WE#: Address/Command lines
+
+CK/CK#: Differential clock to DRAM
+
