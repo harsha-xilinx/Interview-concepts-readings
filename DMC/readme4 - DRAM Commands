@@ -1,0 +1,222 @@
+Excellent 👏 — you’re now entering the command level of DRAM operation — the “instruction set” that the memory controller uses to drive banks, rows, and columns.
+
+Every DRAM operation — from accessing a bit to refreshing the cell’s charge — is built from a small set of core commands:
+
+ACT, READ, WRITE, PRE, and REF
+
+Let’s go through each in detail, with timing, purpose, and internal behavior 👇
+
+🧠 1. Overview of DRAM Commands
+| Command   | Full Name | Purpose                                        |
+| --------- | --------- | ---------------------------------------------- |
+| **ACT**   | ACTIVATE  | Opens (activates) a row in a specific bank     |
+| **READ**  | READ      | Reads data from a column of the open row       |
+| **WRITE** | WRITE     | Writes data to a column of the open row        |
+| **PRE**   | PRECHARGE | Closes the currently open row in a bank        |
+| **REF**   | REFRESH   | Restores the charge in DRAM cells periodically |
+
+⚙️ 2. Command Flow — The Big Picture
+
+The basic sequence to access DRAM is:
+1️⃣ ACT → 2️⃣ READ/WRITE → 3️⃣ PRE → (4️⃣ REF occasionally)
+Only one row can be active per bank at a time, so these commands operate in a strict temporal order per bank.
+
+
+🧩 3. ACTIVATE (ACT)
+
+Purpose:
+
+Opens (activates) a specific row in a specific bank.
+
+Moves data from the selected row in the cell array into the row buffer (sense amplifiers).
+
+Signals:
+
+Assert RAS# (Row Address Strobe) → indicates row access.
+
+Row address is placed on the address bus.
+
+Bank address is sent via bank-select pins.
+
+Effect:
+
+Array[Row X] → Row Buffer
+
+
+Timing parameter:
+
+tRCD (Row-to-Column Delay): minimum delay between ACT and subsequent READ/WRITE.
+
+Notes:
+
+Only one row per bank can be active.
+
+Accessing another row in same bank requires a PRECHARGE first.
+
+🧩 4. READ Command
+
+Purpose:
+
+Reads data from specific columns of the currently active row in a given bank.
+
+Signals:
+
+Assert CAS# (Column Address Strobe).
+
+Column address is sent on address bus.
+
+Effect:
+Row Buffer → I/O gating → DQ pins (data output)
+
+Timing parameter:
+
+tCL (CAS Latency): time between READ command and first data output on the DQ bus.
+
+tBURST: time duration for the burst of data (e.g., 8 beats for DDR4).
+
+Key Points:
+
+If you issue a READ to a bank whose row is already active → Row Hit (fast)
+
+If not → you must ACT first (tRCD delay applies).
+
+🧩 5. WRITE Command
+
+Purpose:
+
+Writes data to specific columns of the active row.
+
+Signals:
+
+Assert CAS# (with WE# low) → write mode.
+
+Column address sent; data placed on DQ lines.
+
+Effect:
+
+DQ pins → Row Buffer → Array (when PRECHARGED)
+
+
+Timing parameters:
+
+tCWL (CAS Write Latency): delay from WRITE command to first data accepted.
+
+tWR (Write Recovery): minimum time after WRITE before PRECHARGE can occur.
+
+Notes:
+
+Writes go first into the row buffer; actual cell update occurs during precharge.
+
+🧩 6. PRECHARGE (PRE)
+
+Purpose:
+
+Closes the currently active row in a bank.
+
+Restores bitlines to the idle voltage (Vdd/2) and prepares bank for next ACTIVATE.
+
+Signals:
+
+Assert PRE#.
+
+Can be issued per-bank or as PRECHARGE ALL (all banks simultaneously).
+
+Effect:
+
+Row Buffer → Array (data written back)
+Bitlines reset to neutral (Vdd/2)
+
+
+Timing parameter:
+
+tRP (Row Precharge time): time to complete precharge before next ACT.
+
+Notes:
+
+Required before activating a new row in same bank.
+
+🧩 6. PRECHARGE (PRE)
+
+Purpose:
+
+Closes the currently active row in a bank.
+
+Restores bitlines to the idle voltage (Vdd/2) and prepares bank for next ACTIVATE.
+
+Signals:
+
+Assert PRE#.
+
+Can be issued per-bank or as PRECHARGE ALL (all banks simultaneously).
+
+Effect:
+
+Row Buffer → Array (data written back)
+Bitlines reset to neutral (Vdd/2)
+
+
+Timing parameter:
+
+tRP (Row Precharge time): time to complete precharge before next ACT.
+
+Notes:
+
+Required before activating a new row in same bank.
+
+🧩 7. REFRESH (REF)
+
+Purpose:
+
+Restores charge in DRAM cells (capacitors leak over time).
+
+Issued periodically by the controller — typically every 64 ms, all rows refreshed in that interval.
+
+Signals:
+
+REFRESH command with Auto-Refresh (AREF) or Self-Refresh (SREF) mode.
+
+Effect:
+
+Controller cycles through all rows internally:
+Array[Row i] → Sense Amps → Writeback
+
+
+Timing parameter:
+
+tRFC (Refresh Cycle time): time DRAM is busy refreshing (no access allowed).
+
+Notes:
+
+The controller spreads refreshes evenly to avoid performance stalls.
+
+Summary Table
+| Command   | Signal   | Description                           | Timing    |
+| --------- | -------- | ------------------------------------- | --------- |
+| **ACT**   | RAS#     | Opens a row, moves it to row buffer   | tRCD      |
+| **READ**  | CAS#     | Reads data from open row → DQ bus     | tCL       |
+| **WRITE** | CAS#+WE# | Writes data into open row from DQ bus | tCWL, tWR |
+| **PRE**   | PRE#     | Closes current row, prepares for next | tRP       |
+| **REF**   | REF#     | Refreshes cells to retain charge      | tRFC      |
+
+🔁 9. Typical DRAM Access Cycle Example
+Cycle 0 : ACT (Row 10, Bank 2)
+Cycle 5 : READ (Column 20, Bank 2)
+Cycle 9 : Data Out (CAS latency satisfied)
+Cycle 13: PRE (close Row 10)
+Cycle 20: ACT (Row 11, Bank 2)
+Cycle 25: WRITE (Column 50)
+Cycle 35: PRE (write recovery done)
+...
+Every 7.8 µs : REF (refresh all rows periodically)
+
+Time →
+|--- ACT (Row 100) ----|       Open Row
+          |--- READ (Col 5) ---|     Read data
+                         |---- PRE ----|   Close Row
+                                     |--- REF ---| Refresh cells
+🧭 11. Quick Analogy
+Concept	Analogy
+ACTIVATE	Open a specific page in a book
+READ/WRITE	Read or modify a sentence on that page
+PRECHARGE	Close the page and put it back
+REFRESH	Re-ink faded text periodically so it doesn’t vanish
