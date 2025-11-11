@@ -654,23 +654,57 @@ what is Open-page vs close-page policy in DRAM ?
 Definition:
 The controller keeps the row open after an access, assuming that future accesses might target the same row.
 
-Advantages:
+2.3 Timing
 
-Low latency for row hits: if the next access is to the same row, no reactivation is needed — data is accessed immediately.
+Row hit latency: tCAS (very fast)
 
-High efficiency for workloads with spatial or temporal locality (e.g., sequential accesses).
+Row miss latency: tRCD + tCAS + tRP (slow)
 
-Disadvantages:
+2.4 Advantages
 
-If the next access is to a different row, the current row must be closed (precharged) before opening the new one, causing a row conflict → higher latency.
+High throughput for sequential or locality-heavy access patterns.
+
+Energy efficient, since fewer activations and precharges are needed.
+
+2.5 Disadvantages
+
+High penalty for conflicts when access patterns switch rows frequently.
+
+Can waste power keeping unneeded rows open (leakage + static current).
+
+In multicore systems, can lead to bank contention.
 
 Best for:
 Streaming or sequential workloads (e.g., video, graphics, caches with good locality).
+
+The assumption: future accesses are likely to hit the same row.
+
+2.2 Operation Example
+
+Access 1:
+
+Row A in Bank 0 is activated → READ/WRITE performed.
+
+Access 2:
+
+If it also targets Row A → immediate row hit, no need for ACT or PRE.
+
+If it targets Row B → row conflict → PRE (close A) → ACT (open B) → READ.
 
 🔒 3. Close-Page Policy
 
 Definition:
 The controller closes (precharges) the row immediately after servicing an access, assuming that the next access will be to a different row.
+
+3.2 Operation Example
+
+Access 1:
+
+Row A is activated → READ/WRITE → immediately precharged.
+
+Access 2:
+
+Whether Row B or Row A → must perform ACT again.
 
 Advantages:
 
@@ -699,3 +733,28 @@ History-based predictors: track row access patterns.
 
 Access counters or machine learning heuristics.
 
+4.1 Adaptive Policy Types
+
+Access-based:
+
+Keeps the row open if multiple accesses are detected in a short time.
+
+Otherwise, closes it after one access.
+
+Predictive (history-based):
+
+Tracks access patterns for each row/bank using prediction tables.
+
+Chooses policy dynamically (open or close) based on past hits/misses.
+
+Machine learning–based:
+
+Uses ML predictors to anticipate row reuse.
+
+4.2 Example Algorithms
+
+Intel adaptive open-page policy: Predicts row hit probability per bank.
+
+IBM POWER memory controller: Employs per-row access counters.
+
+ARM MC (Memory Controller) IP: Uses heuristics to choose close-page for low-locality traffic
