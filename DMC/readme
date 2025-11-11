@@ -1,3 +1,10 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+pending reads
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Submodules: address mapper, scheduler, timing engine, refresh unit
+AXI transaction to DDR command flow
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 how is DMC connected to a memory, can you draw diagram ?
 
                ┌───────────────────────────────┐
