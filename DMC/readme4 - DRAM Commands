@@ -220,3 +220,482 @@ ACTIVATE	Open a specific page in a book
 READ/WRITE	Read or modify a sentence on that page
 PRECHARGE	Close the page and put it back
 REFRESH	Re-ink faded text periodically so it doesn’t vanish
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+DMC pipeline: AXI → Command Interface → Scheduler → PHY
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+The DMC (Dynamic Memory Controller) pipeline you mentioned — AXI → Command Interface → Scheduler → PHY — is the typical dataflow for memory transactions between a system bus and DRAM. Here’s a concise explanation of each stage:
+
+1. AXI Interface
+
+Purpose: Acts as the front-end interface between the SoC interconnect (AXI masters) and the memory controller.
+Functionality:
+Receives read/write requests using AXI channels (AW, W, B, AR, R).
+Handles burst, size, and address alignment.
+Performs address decoding to map transactions to specific memory regions or ranks.
+
+2. Command Interface
+Purpose: Translates AXI-level transactions into DRAM commands.
+Functionality:
+Converts AXI read/write requests into open/activate, read, write, precharge sequences.
+Maintains command buffers for pending requests.
+Performs address translation (row, column, bank mapping).
+
+3. Scheduler
+Purpose: Optimizes memory access by reordering and scheduling commands.
+Functionality:
+Applies DRAM timing constraints (tRCD, tRP, tRAS, etc.).
+Reorders commands for maximum bandwidth and minimum latency.
+Implements QoS (Quality of Service) and bank management policies.
+Manages refresh cycles and power-saving modes.
+
+4. PHY (Physical Interface)
+Purpose: The back-end that performs electrical signaling to DRAM devices.
+Functionality:
+Converts logical commands into DDR signals (DQS, DQ, CK, etc.).
+Handles timing calibration (write leveling, read training).
+Manages data serialization/deserialization (SerDes) for high-speed transfers.
+Overall Data Flow
+AXI (Transaction Layer)
+   ↓
+Command Interface (Protocol Translation)
+   ↓
+Scheduler (Timing & Optimization)
+   ↓
+PHY (Physical Layer Signaling)
+
+include a block diagram or RTL-level signal mapping between these stages (e.g., how AWADDR, WVALID, etc. flow through the command interface to the PHY)?
+
+1) High‑level Block Diagram
+AXI4/AXI4-Lite Frontend
+┌───────────────────────────┐
+│ AW/AR addr dec & align │
+│ W/B/R data/resp │
+│ QoS/ID/len handling │
+└──────────┬────────────────┘
+│ AXI txn (valid/ready)
+▼
+┌───────────────────────────┐
+│ Command Interface │ ← transaction → command micro-ops
+│ • address map: {rank, bankgrp, bank, row, col}
+│ • split/merge bursts; track IDs/tags
+│ • write-gather / read-merge FIFOs
+└──────────┬────────────────┘
+│ cmdq (valid/ready) + dataptrs
+▼
+┌───────────────────────────┐
+│ Scheduler │
+│ • policy: FR-FCFS + aging
+│ • timing: tRCD, tRP, tRAS, tFAW, tCCD, tRRD, tWTR, tRTW
+│ • bank/open‑row mgmt, refresh, power‑down
+└──────────┬────────────────┘
+│ issue (cmd, addr, bg/bk, row/col, bl)
+▼
+┌───────────────────────────┐ ┌───────────────────────────┐
+│ PHY │ DFI │ DRAM          │
+│ • write leveling / training │──────▶│ DDRx device(s)    │
+│ • DQS gate, SerDes, Vref  │◀──────│                     │
+└───────────────────────────┘ └───────────────────────────┘
+
+_________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+1) Address Mapper
+Purpose:
+
+Converts the AXI address into DRAM‑specific fields {rank, bank group, bank, row, column}. It controls how system traffic maps across DRAM structures for maximum throughput and minimal conflicts.
+
+Key Functions:
+
+Address Field Extraction:
+
+AXI_ADDR[N-1:0] → {rank, bg, bank, row, col, byte_offset}
+
+Parameterized slicing allows flexible mapping for DDR3/DDR4/LPDDR5.
+
+Interleaving Policies:
+
+Bank Interleave: consecutive addresses go to different banks for parallelism.
+
+Rank Interleave: alternate between ranks to hide timing gaps.
+
+Page Policy: determines open‑page or close‑page access strategy.
+
+Programmable Mapping Table: CSR‑controlled field boundaries for easy tuning per memory topology.
+
+Outputs:
+
+rank_sel, bankgrp, bank, row_addr, col_addr
+
+burst_offset (used to increment column for burst operations)
+
+feed into Command Interface and Scheduler.
+
+
+2) Scheduler
+Purpose:
+
+Optimizes command issue order for high bandwidth while meeting DRAM timing and QoS constraints.
+
+Core Responsibilities:
+
+Maintain command queues for read/write/activate/precharge per bank.
+
+Detect row hits/misses to minimize activate/precharge overhead.
+
+Reorder commands under FR‑FCFS (First‑Ready, First‑Come‑First‑Serve) policy.
+
+Apply QoS weighting based on AXI ID, priority, or traffic class.
+
+Arbitration Flow:
+
+Select banks with ready commands (ready_set).
+
+Apply timing constraints (from Timing Engine).
+
+Choose oldest eligible or highest‑priority command.
+
+Drive selected command to PHY via sch_cmd, sch_addr, sch_valid.
+
+Interfaces:
+
+Inputs: cmdq_valid/payload, timing_ready_flags, refresh_blocked.
+
+Outputs: sch_cmd, sch_addr, wrdata_req, rddata_arm.
+
+3) Timing Engine
+Purpose:
+
+Tracks all DRAM timing constraints and ensures every issued command is legal.
+
+Timing Domains:
+
+Per‑Bank Timers:
+
+tRCD (ACT→RD/WR)
+
+tRAS (ACT→PRE)
+
+tRP (PRE→ACT)
+
+tRRD (ACT→ACT)
+
+Global/Bank‑Group Timers:
+
+tFAW, tCCD, tWTR, tRTW
+
+tCCD_L, tRRD_L for group‑level interactions
+
+Bus Turnaround Control: Ensures enough gap between RD↔WR transitions.
+
+Implementation:
+
+Timer Tables: array of countdown registers indexed by {rank,bg,bank}.
+
+Readiness Masks: ready[cmd_type][bank] flags for the scheduler.
+
+Dynamic Update: decrements each clock; updates after every issued command.
+
+Interaction:
+
+Scheduler queries the Timing Engine for eligible banks. If timing not met, the command remains pending until constraint clears.
+
+4) Refresh Unit
+Purpose:
+
+Manages DRAM refresh cycles to preserve data integrity while minimizing performance impact.
+
+Modes:
+
+All‑bank refresh (DDR3/DDR4 standard)
+
+Per‑bank refresh (DDR4/LPDDR5 optional)
+
+Core Logic:
+
+Maintain tREFI counter per rank.
+
+Assert refresh_req once refresh window expires.
+
+Coordinate with Scheduler to block command issue to that rank/bank.
+
+Generate REF command and enforce tRFC recovery.
+
+Features:
+
+Postpone/Advance Window: allows limited scheduling flexibility (per JEDEC).
+
+Low‑Power Coordination: can trigger self‑refresh or power‑down entry.
+
+Status Signals: refresh_pending, refresh_done.
+
+5) Inter‑Module Relationships
+Source	Destination	Signals / Data
+Address Mapper	Command Interface	{rank,bg,bank,row,col}
+Command Interface	Scheduler	CmdToken + QoS info
+Scheduler	Timing Engine	command type, target bank
+Timing Engine	Scheduler	ready flags per bank
+Refresh Unit	Scheduler	refresh busy/allow states
+Scheduler	PHY	sch_cmd, sch_addr, sch_valid
+
+Excellent 👏 — you’re now entering the command level of DRAM operation — the “instruction set” that the memory controller uses to drive banks, rows, and columns.
+
+Every DRAM operation — from accessing a bit to refreshing the cell’s charge — is built from a small set of core commands:
+
+ACT, READ, WRITE, PRE, and REF
+
+Let’s go through each in detail, with timing, purpose, and internal behavior 👇
+
+🧠 1. Overview of DRAM Commands
+Command	Full Name	Purpose
+ACT	ACTIVATE	Opens (activates) a row in a specific bank
+READ	READ	Reads data from a column of the open row
+WRITE	WRITE	Writes data to a column of the open row
+PRE	PRECHARGE	Closes the currently open row in a bank
+REF	REFRESH	Restores the charge in DRAM cells periodically
+⚙️ 2. Command Flow — The Big Picture
+
+The basic sequence to access DRAM is:
+
+1️⃣ ACT → 2️⃣ READ/WRITE → 3️⃣ PRE → (4️⃣ REF occasionally)
+
+
+Only one row can be active per bank at a time, so these commands operate in a strict temporal order per bank.
+
+🧩 3. ACTIVATE (ACT)
+
+Purpose:
+
+Opens (activates) a specific row in a specific bank.
+
+Moves data from the selected row in the cell array into the row buffer (sense amplifiers).
+
+Signals:
+
+Assert RAS# (Row Address Strobe) → indicates row access.
+
+Row address is placed on the address bus.
+
+Bank address is sent via bank-select pins.
+
+Effect:
+
+Array[Row X] → Row Buffer
+
+
+Timing parameter:
+
+tRCD (Row-to-Column Delay): minimum delay between ACT and subsequent READ/WRITE.
+
+Notes:
+
+Only one row per bank can be active.
+
+Accessing another row in same bank requires a PRECHARGE first.
+
+🧩 4. READ Command
+
+Purpose:
+
+Reads data from specific columns of the currently active row in a given bank.
+
+Signals:
+
+Assert CAS# (Column Address Strobe).
+
+Column address is sent on address bus.
+
+Effect:
+
+Row Buffer → I/O gating → DQ pins (data output)
+
+
+Timing parameter:
+
+tCL (CAS Latency): time between READ command and first data output on the DQ bus.
+
+tBURST: time duration for the burst of data (e.g., 8 beats for DDR4).
+
+Key Points:
+
+If you issue a READ to a bank whose row is already active → Row Hit (fast)
+
+If not → you must ACT first (tRCD delay applies).
+
+🧩 5. WRITE Command
+
+Purpose:
+
+Writes data to specific columns of the active row.
+
+Signals:
+
+Assert CAS# (with WE# low) → write mode.
+
+Column address sent; data placed on DQ lines.
+
+Effect:
+
+DQ pins → Row Buffer → Array (when PRECHARGED)
+
+
+Timing parameters:
+
+tCWL (CAS Write Latency): delay from WRITE command to first data accepted.
+
+tWR (Write Recovery): minimum time after WRITE before PRECHARGE can occur.
+
+Notes:
+
+Writes go first into the row buffer; actual cell update occurs during precharge.
+
+🧩 6. PRECHARGE (PRE)
+
+Purpose:
+
+Closes the currently active row in a bank.
+
+Restores bitlines to the idle voltage (Vdd/2) and prepares bank for next ACTIVATE.
+
+Signals:
+
+Assert PRE#.
+
+Can be issued per-bank or as PRECHARGE ALL (all banks simultaneously).
+
+Effect:
+
+Row Buffer → Array (data written back)
+Bitlines reset to neutral (Vdd/2)
+
+
+Timing parameter:
+
+tRP (Row Precharge time): time to complete precharge before next ACT.
+
+Notes:
+
+Required before activating a new row in same bank.
+
+🧩 7. REFRESH (REF)
+
+Purpose:
+
+Restores charge in DRAM cells (capacitors leak over time).
+
+Issued periodically by the controller — typically every 64 ms, all rows refreshed in that interval.
+
+Signals:
+
+REFRESH command with Auto-Refresh (AREF) or Self-Refresh (SREF) mode.
+
+Effect:
+
+Controller cycles through all rows internally:
+Array[Row i] → Sense Amps → Writeback
+
+
+Timing parameter:
+
+tRFC (Refresh Cycle time): time DRAM is busy refreshing (no access allowed).
+
+Notes:
+
+The controller spreads refreshes evenly to avoid performance stalls.
+
+📘 8. Summary Table
+Command	Signal	Description	Timing
+ACT	RAS#	Opens a row, moves it to row buffer	tRCD
+READ	CAS#	Reads data from open row → DQ bus	tCL
+WRITE	CAS#+WE#	Writes data into open row from DQ bus	tCWL, tWR
+PRE	PRE#	Closes current row, prepares for next	tRP
+REF	REF#	Refreshes cells to retain charge	tRFC
+🔁 9. Typical DRAM Access Cycle Example
+Cycle 0 : ACT (Row 10, Bank 2)
+Cycle 5 : READ (Column 20, Bank 2)
+Cycle 9 : Data Out (CAS latency satisfied)
+Cycle 13: PRE (close Row 10)
+Cycle 20: ACT (Row 11, Bank 2)
+Cycle 25: WRITE (Column 50)
+Cycle 35: PRE (write recovery done)
+...
+Every 7.8 µs : REF (refresh all rows periodically)
+
+🧩 10. ASCII Timing Sequence
+Time →
+|--- ACT (Row 100) ----|       Open Row
+          |--- READ (Col 5) ---|     Read data
+                         |---- PRE ----|   Close Row
+                                     |--- REF ---| Refresh cells
+
+🧭 11. Quick Analogy
+Concept	Analogy
+ACTIVATE	Open a specific page in a book
+READ/WRITE	Read or modify a sentence on that page
+PRECHARGE	Close the page and put it back
+REFRESH	Re-ink faded text periodically so it doesn’t vanish
+⚙️ 12. Modern Extensions
+
+In DDR4/DDR5, the command set expands with:
+
+ACTP – Activate multiple banks in parallel
+
+PREPB / PREAB – Per-bank and all-bank precharge
+
+REFAB / REFPB / REF3x – Different refresh granularities
+
+SREF / PDN – Self-refresh and power-down modes
+
+But fundamentally, they all build on the five base commands above.
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+what is Open-page vs close-page policy in DRAM ?
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔓 2. Open-Page Policy
+
+Definition:
+The controller keeps the row open after an access, assuming that future accesses might target the same row.
+
+Advantages:
+
+Low latency for row hits: if the next access is to the same row, no reactivation is needed — data is accessed immediately.
+
+High efficiency for workloads with spatial or temporal locality (e.g., sequential accesses).
+
+Disadvantages:
+
+If the next access is to a different row, the current row must be closed (precharged) before opening the new one, causing a row conflict → higher latency.
+
+Best for:
+Streaming or sequential workloads (e.g., video, graphics, caches with good locality).
+
+🔒 3. Close-Page Policy
+
+Definition:
+The controller closes (precharges) the row immediately after servicing an access, assuming that the next access will be to a different row.
+
+Advantages:
+
+Reduces row conflict penalties because each bank is ready for a new access.
+
+Useful for random access patterns.
+
+Disadvantages:
+
+Loses the benefit of row hits, since even if the next access targets the same row, it must be reopened.
+
+Best for:
+Random or highly interleaved workloads (e.g., server environments, multiprocessor systems).
+
+⚙️ 4. Adaptive (Hybrid) Page Policy
+
+Modern memory controllers often use an adaptive approach:
+
+They predict whether the next access will hit the same row.
+
+Dynamically choose between open-page and close-page policies.
+
+Example techniques:
+
+History-based predictors: track row access patterns.
+
+Access counters or machine learning heuristics.
+
