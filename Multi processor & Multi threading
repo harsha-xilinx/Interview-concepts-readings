@@ -1,0 +1,65 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                                                      Multi processor & Multi threading
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Multi-Processor
+---------------
+A multiprocessor system is a computer system that has two or more processors (CPUs) sharing the same physical memory and connected through a common interconnect or bus.
+In simpler terms:
+Multiple CPUs working together within a single system to execute tasks faster, more efficiently, or in parallel.
+
+🧠 Why Use Multiprocessors?
+	•	Performance: Multiple CPUs can execute different parts of a program or multiple programs at once (parallelism).
+	•	Scalability: System performance scales with added processors.
+	•	Reliability: Some designs provide fault tolerance — if one processor fails, others continue.
+	•	Specialization: Certain processors can be optimized for specific tasks (e.g., graphics, signal processing)
+
+⚙️ 1. Architecture Types of Multiprocessor Systems
+
+A. Shared Memory Multiprocessors (Tightly Coupled)
+All processors share a common main memory.
+Key traits:
+	•	All CPUs have access to the same memory space.
+	•	Communication occurs through shared variables.
+	•	Synchronization is achieved using locks or semaphores.
+
+Examples:
+	•	Modern multicore CPUs (Intel, AMD, ARM big.LITTLE)
+	•	SMP (Symmetric Multiprocessing) servers
+
+B. Distributed Memory Multiprocessors (Loosely Coupled)
+Each processor has its own private memory, and processors communicate via a network (message passing).
+Examples:
+	•	Cluster computing (Beowulf, HPC systems)
+	•	Supercomputers using MPI (Message Passing Interface)
+
+
+Type                                                Description                                                    Example
+Asymmetric Multiprocessing (AMP)           One master CPU controls others                                   Older embedded systems
+Symmetric Multiprocessing (SMP)           All CPUs are peers; share memory equally                          Modern x86/ARM servers
+Massively Parallel Processing (MPP)       Many independent CPUs, each with its own memory                   Supercomputers, GPUs
+Heterogeneous Multiprocessing (HMP)      Different types of cores (e.g., performance + efficiency)          ARM big.LITTLE, SoCs
+
+🧠 4. Memory Consistency and Coherence
+
+Shared-memory multiprocessors face coherence challenges — multiple CPUs caching the same data must stay synchronized.
+	•	Cache Coherence Protocols (e.g., MESI, MOESI)
+	•	Ensure all processors see consistent values.
+	•	Memory Consistency Models
+	•	Define when updates to shared memory become visible (e.g., sequential, relaxed).
+
+🧾 5. Software Support
+	•	Operating Systems must handle:
+	•	CPU scheduling across cores
+	•	Synchronization primitives (mutex, semaphores)
+	•	Interrupt handling per CPU
+	•	Programming Models:
+	•	Shared memory: OpenMP, pthreads
+	•	Distributed memory: MPI
+	•	Hybrid: CUDA (for GPUs), OpenCL
+
+Read:
+Design issues in Tightly coupled Micro processor
+Programming issues in Tightly coupled Micro processor
+Hardware based Multithreading
+
