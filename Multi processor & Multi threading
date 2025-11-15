@@ -143,6 +143,23 @@ How does MESI prevent stale data in cache coherence?
 👉 Be ready to discuss bus arbitration logic and how to prevent starvation or priority inversion.
 👉 Know MESI states and how “write-invalidate” and “write-update” work.
 
+In a multicore processor, a single program can be divided into multiple threads or tasks that run in parallel on multiple cores.
+🔍 Detailed Explanation
+Programs vs. Threads
+A program is made up of many instructions.
+It can create multiple threads (smaller independent sequences of instructions).
+Each thread can run on a different core — that’s how one program can utilize multiple cores.
+Example:
+A video editing software may have separate threads for UI, encoding, decoding, and file I/O.
+These threads can execute concurrently on different cores.
+When It’s Not True
+If the program is single-threaded, it will only run on one core at a time, even if more cores exist.
+The OS might move it between cores for scheduling, but that doesn’t mean it’s using them simultaneously.
+When It Is True
+Programs written with multithreading or parallel processing (e.g., OpenMP, pthreads, C++ std::thread) can actually divide their work across multiple cores.
+🧠 In short
+❌ A single instruction cannot be divided across cores.
+✅ A single program can be divided into multiple threads that run on multiple cores — if it’s written to do so.
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Flynn's Taxonomy
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -235,3 +252,10 @@ Each processor fetches its own instructions and data
 Task-level parallelism
 Most modern processors use this
 Examples: Multicore CPUs, clusters, cloud servers
+
+🧠 8. Instruction vs Thread vs Data Parallelism
+| Type    | Level             | Example                  | Hardware Support     |
+| ------- | ----------------- | ------------------------ | -------------------- |
+| **ILP** | Within one thread | Out-of-order, pipelining | Superscalar design   |
+| **TLP** | Across threads    | Multi-threaded programs  | Multicore processors |
+| **DLP** | Across data       | SIMD / Vector ops        | AVX, NEON, GPU       |
