@@ -1,0 +1,161 @@
+Exception Levels in modern CPU architectures
+
+It represents the privilege level or execution context of the processor — that is, how much control the software running on a core has over the hardware.
+In ARMv8-A and ARMv9-A architectures (used in most modern CPUs, including those in phones, servers, and embedded systems), there are four primary ELs:
+| Level   | Name                | Typical Use                           | Privilege |
+| ------- | ------------------- | ------------------------------------- | --------- |
+| **EL0** | User Mode           | Applications / User processes         | Lowest    |
+| **EL1** | Kernel Mode         | Operating System kernel               | High      |
+| **EL2** | Hypervisor Mode     | Virtualization layer (e.g., KVM, Xen) | Higher    |
+| **EL3** | Secure Monitor Mode | Trusted firmware / Secure world       | Highest   |
+
+Each core can operate at any of these below levels, depending on what software is running.
+┌──────────────────────────────┐
+ │ EL3: Secure Monitor / TrustZone  ← Highest privilege (firmware) │
+ ├──────────────────────────────┤
+ │ EL2: Hypervisor (Virtual Machines manager)                      │
+ ├──────────────────────────────┤
+ │ EL1: OS Kernel (Linux, Windows, etc.)                           │
+ ├──────────────────────────────┤
+ │ EL0: User Applications (processes, apps, libraries)             │
+ └──────────────────────────────┘
+
+🧠 3. Exception Levels Explained in Detail
+🔹 EL0 – User Mode
+
+Runs user applications (like your programs, browsers, etc.).
+
+Has no direct access to privileged system instructions or hardware.
+
+Any attempt to execute such instructions triggers an exception → handled by EL1 (the OS).
+
+Example: mov r0, #0 is okay, but msr SPSR_EL1, x0 will cause a privilege fault.
+
+🔹 EL1 – Kernel Mode
+
+Runs the operating system kernel.
+
+Has full access to system resources (memory, interrupts, timers, etc.).
+
+Handles exceptions/traps from EL0 (system calls, interrupts).
+
+Example: Linux kernel, FreeBSD kernel, or embedded RTOS.
+
+🔹 EL2 – Hypervisor Mode
+
+Added with ARMv8 virtualization extensions.
+
+Manages virtual machines (VMs) — each VM’s OS thinks it runs at EL1, but the hypervisor traps privileged operations.
+
+Example: KVM, Xen, or VMware ESXi run at EL2.
+
+🔹 EL3 – Secure Monitor Mode
+
+Part of ARM’s TrustZone technology.
+
+Switches between Normal World (EL0–EL2) and Secure World (Trusted Firmware, TEE).
+
+Runs firmware that initializes the CPU, sets security states, or handles secure calls (SMCs).
+
+Example: ARM Trusted Firmware (ATF), OP-TEE, or bootloader code.
+
+
+. How the Core Switches Between ELs
+Transitions happen via exceptions or traps:
+| Trigger                        | From → To     | Example                           |
+| ------------------------------ | ------------- | --------------------------------- |
+| System call (`svc`)            | EL0 → EL1     | App requests OS service           |
+| Interrupt / IRQ                | EL0/EL1 → EL1 | Timer interrupt handled by kernel |
+| Hypervisor trap                | EL1 → EL2     | Virtualized access intercepted    |
+| Secure monitor call (SMC)      | EL1/EL2 → EL3 | Switch to secure firmware         |
+| Return from exception (`eret`) | Back down     | Resume lower-level execution      |
+
+Relation to x86 Privilege Rings
+If you’re familiar with Intel/AMD CPUs:
+| ARM EL | x86 Equivalent                    | Description    |
+| ------ | --------------------------------- | -------------- |
+| EL0    | Ring 3                            | User mode      |
+| EL1    | Ring 0                            | Kernel mode    |
+| EL2    | VMM root mode                     | Hypervisor     |
+| EL3    | System Management Mode / Firmware | Secure monitor |
+
+🧱 7. Example: Linux on ARMv8
+
+When you boot Linux on an ARMv8 multicore CPU:
+Boot ROM (EL3) → runs secure firmware
+Switches to EL2 to initialize virtualization (if enabled)
+Then launches EL1 (Linux kernel)
+Kernel starts user-space processes at EL0
+So each CPU core goes through these levels during startup.
+Once the OS runs, each core switches dynamically between EL0 (user) and EL1 (kernel) as it handles system calls and interrupts.
+
+🏛️ 2. Analogy: The “Government Building” Analogy 🏢
+
+Imagine your CPU as a secure government building with multiple floors.
+Each floor has different clearance levels — and each level can only access certain doors or issue certain commands.
+
+Floor	Level	Who Works There	Access Rights
+4th floor (EL3)	Secure Monitor	National Security (firmware)	Full building control, including secure vaults
+3rd floor (EL2)	Hypervisor	Oversees multiple departments (VMs)	Can allocate rooms/floors, but not enter secure vault
+2nd floor (EL1)	OS Kernel	Manages offices (apps)	Controls room access and operations
+1st floor (EL0)	Employees / Apps	Regular workers	Can only use their assigned computers, no admin rights
+🧩 How It Works:
+
+A regular employee (EL0) can’t unlock the server room or modify security cameras — only IT/Admin (EL1) can.
+
+The IT admin (EL1) can manage software and hardware but not mess with the hypervisor (EL2) that allocates entire systems.
+
+The hypervisor (EL2) runs above the OS — it can create or isolate whole “offices” (virtual machines).
+
+Finally, the security chief (EL3) can override everything — secure boot, encryption keys, and switching between secure/non-secure modes.
+
+Each “floor” (EL) has a limited staircase up, controlled by exceptions — you can go up only when something serious happens (e.g., system call, interrupt, trap).
+You can only go down again when authorized (using eret).
+
+⚙️ 3. Real-World Parallel: Your Phone
+
+When you unlock your phone:
+
+EL3: Secure firmware checks the signature (bootloader → TrustZone).
+
+EL2: The hypervisor isolates Android from baseband OS or secure apps.
+
+EL1: Android kernel runs — manages memory, apps, and drivers.
+
+EL0: Your apps (WhatsApp, browser, etc.) run under Android.
+
+Each layer trusts the one above but not the one below — and each has strictly limited access.
+
+If a malicious app (EL0) tries to hack the kernel (EL1), it can’t — the CPU enforces that separation in hardware.
+
+🔐 4. Why It’s Needed
+Reason	Without ELs	With ELs
+Security	Any code could access any register or memory	Strictly isolated layers
+Stability	A bad app crash could bring down the OS	Contained to its own level
+Virtualization	Impossible — OS and VM would conflict	Hypervisor (EL2) manages virtual OS instances
+Secure Boot / TrustZone	No hardware root of trust	EL3 firmware enforces secure boot chain
+Debugging / Exception Handling	Manual and risky	Automatic traps between levels
+
+Essentially, ELs prevent chaos — ensuring that:
+
+Apps can’t break the OS
+
+The OS can’t break the hypervisor
+
+Even the hypervisor can’t touch secure firmware
+
+🧩 5. Mini Analogy 2 — “The Castle”
+
+EL0: Villagers — can roam in town (user apps).
+
+EL1: Guards — enforce rules, control gates (OS kernel).
+
+EL2: Commander — oversees all guards (hypervisor).
+
+EL3: King — ultimate authority, decides what’s secure (firmware).
+
+If a villager rebels, the guards handle it (exception to EL1).
+If guards misbehave, the commander intervenes (trap to EL2).
+If the commander goes rogue, only the king can override (secure firmware at EL3).
+
+That’s the hierarchical security model inside every modern CPU core.
