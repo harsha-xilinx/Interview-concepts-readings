@@ -259,3 +259,41 @@ Examples: Multicore CPUs, clusters, cloud servers
 | **ILP** | Within one thread | Out-of-order, pipelining | Superscalar design   |
 | **TLP** | Across threads    | Multi-threaded programs  | Multicore processors |
 | **DLP** | Across data       | SIMD / Vector ops        | AVX, NEON, GPU       |
+
+
+************************************************************************************************************************************
+Frequency and Multicore processor
+************************************************************************************************************************************
+The Single-Core Era (Frequency Scaling)
+
+Initially, CPUs improved performance by raising clock frequency:
+
+From ~100 MHz (1990s) → 3–4 GHz (2000s).
+
+Each generation improved pipeline depth, logic speed, and voltage scaling.
+
+Then we hit the power wall:
+
+P=v^2 * f;
+
+Heat and leakage rose sharply beyond ~4–5 GHz.
+
+Designers couldn’t keep increasing clock without overheating or violating power limits.
+
+That’s when the shift to multicore began.
+
+The Multicore Shift: Parallelism over Frequency
+What Changed:
+
+Instead of one core running faster, designers put more cores running slower.
+
+Why:
+
+Same total power budget (TDP)
+
+Each core runs at a lower frequency (reduces power)
+
+More cores → more parallel work → higher overall throughput
+
+Throughput Effect: Total Work per Unit Time
+Even if each core runs slower, adding cores usually increases total throughput, assuming the workload can use them.
