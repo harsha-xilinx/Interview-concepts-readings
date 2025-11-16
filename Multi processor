@@ -297,3 +297,138 @@ More cores → more parallel work → higher overall throughput
 
 Throughput Effect: Total Work per Unit Time
 Even if each core runs slower, adding cores usually increases total throughput, assuming the workload can use them.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+In an SMP (Symmetric Multi-Processing) system, task allocation to cores is handled almost entirely by the operating system scheduler, not by the hardware.
+The hardware simply provides multiple identical cores — the OS decides “who runs where.”
+
+✅ How Tasks Are Allocated to Cores in an SMP System
+1️⃣ OS Scheduler Picks a Core
+
+In SMP, the OS sees all CPU cores as equal and chooses where a process (task/thread) should run.
+Schedulers used:
+Linux → CFS (Completely Fair Scheduler)
+Windows → Dynamic priority-based round-robin
+Real-time OS → Fixed priority / rate-monotonic / EDF
+The OS decides based on:
+Core availability (idle cores preferred)
+Load balancing (avoid overloading one core)
+CPU affinity (keep tasks on the same core if beneficial)
+Priority of tasks
+
+✅ 2️⃣ Scheduling Domains & Load Balancing
+OS divides cores into scheduling groups and periodically tries to ensure:
+No core is overloaded
+No core is idle when work exists elsewhere
+Load balancing factors:
+Number of runnable tasks per core
+CPU utilization per core
+Migration cost (moving task to another core)
+
+✅ 3️⃣ CPU Affinity (Huge Factor)
+Schedulers prefer to keep a task on the same core it previously ran on.
+Why?
+Cache locality (warm L1/L2 cache)
+Reducing migration overhead
+Better performance for multi-threaded apps
+So the OS tries:
+Run task on its last-used core (CPU affinity)
+If that core is busy → pick an idle core
+If none → pick the least-loaded core
+
+✅ 4️⃣ Task Priority and Policy
+Task assignment also depends on priority and scheduling policy:
+Examples:
+SCHED_FIFO / SCHED_RR (real-time tasks) → run ASAP, preempt other tasks
+SCHED_NORMAL (CFS) → fairness based on virtual runtime
+Fair-share policies → assign CPU proportional to group entitlement
+
+✅ 5️⃣ Multi-threaded Program Behavior
+For multi-threaded applications (e.g., using pthreads, OpenMP):
+Threads run independently on cores
+OS tries to spread them across cores for better parallelism
+But may pack threads to reduce power usage (energy-aware scheduling)
+
+📌 Summary: What Is the Basis for Distribution?
+A task is allocated to a core based on:
+Availability of cores (idle first)
+Load balancing (least-loaded core)
+CPU affinity (keep on same core if possible)
+Priority / scheduling policy
+Cache considerations & migration cost
+Power/performance goal
+Real-time constraints, if any
+
+🧠 Interview-Ready Explanation (Short Answer)
+In an SMP system, tasks are assigned to cores by the OS scheduler. All cores are identical, so the OS uses factors like core load, task priority, CPU affinity, and migration cost to place tasks. Tasks typically run on their previous core to preserve cache locality, unless load balancing requires migration. Thus, task distribution is dynamic and driven primarily by software—not the hardware.
+
+🧩 Diagram: SMP Task Scheduling (Conceptual)
+                +----------------+
+                |    OS Kernel   |
+                |  (Scheduler)   |
+                +----------------+
+                         |
+                         v
+        ------------------------------------------------
+        |         Ready Queue / Run Queue             |
+        |  Task A | Task B | Task C | Task D | ...    |
+        ------------------------------------------------
+              |           |           |           |
+              |           |           |           |
+     ----------------------------------------------------------------
+     | Core 0        | Core 1        | Core 2        | Core 3       |
+     | (CPU0)        | (CPU1)        | (CPU2)        | (CPU3)       |
+     ----------------------------------------------------------------
+        |               |              |              |
+   Run Task A     Run Task C      Run Task B     Run Task D
+
+🧩 Diagram: How OS Chooses a Core
+                    +-----------------------------+
+                    |   New runnable task arrives |
+                    +-------------+---------------+
+                                  |
+                                  v
+                    +-----------------------------+
+                    | Check last running CPU      |
+                    | (CPU affinity)              |
+                    +-------------+---------------+
+                                  | Yes: idle? 
+                    +-------------v----------+    
+                    | Run on same core       |
+                    +-------------------------+
+                                  |
+                               No (busy)
+                                  v
+                    +-----------------------------+
+                    | Find least-loaded core      |
+                    | (Load balancing)            |
+                    +-------------+---------------+
+                                  |
+                                  v
+                    +-----------------------------+
+                    | Assign task to that core    |
+                    +-----------------------------+
+
+is SMP scheduling different from how OS choses a core ?
+No — they are the same thing.
+| Concept            | Meaning                                                                      |
+| ------------------ | ---------------------------------------------------------------------------- |
+| **OS Scheduling**  | Choosing which task runs next (priority, policy)                             |
+| **Core Selection** | Deciding which CPU core executes the chosen task                             |
+| **SMP Scheduling** | OS scheduling adapted for symmetric multi-core systems → includes both steps |
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                                             CPU SS INTERVIEW QUESTION
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+1️⃣ What is SMP scheduling?
+2️⃣ On what basis does the OS assign tasks to cores in SMP?
+3️⃣ What is CPU affinity and why is it important?
+4️⃣ Why does the scheduler sometimes migrate a task to another core?
+5️⃣ What is the difference between SMP and AMP scheduling?
+7️⃣ What happens when many threads of a program wake up at the same time?
+9️⃣ What hardware features help SMP scheduling?
+🔟 How does task scheduling affect hardware like caches and interconnects?
+
