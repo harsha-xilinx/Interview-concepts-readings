@@ -1,0 +1,166 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                                               MULTITHREADING
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔵 CPU Perspective: How the 4 terms relate
+Think of the CPU as a machine that executes instructions. Everything ultimately comes down to instructions.
+Here is the hierarchy from largest to smallest:
+Task
+  → Process
+      → Thread
+          → Instructions (executed by CPU)
+
+1️⃣ Instruction — what the CPU actually executes
+The smallest unit.
+A single operation the CPU performs.
+Example: load, add, jump, compare, etc.
+💡 The CPU directly understands and works with instructions only.
+
+2️⃣ Thread — a sequence of instructions
+A thread is like a path of execution.
+The CPU runs one thread’s instructions at a time (per core).
+From the CPU’s view:
+A thread = “the stream of instructions I must execute.”
+
+3️⃣ Process — container for threads
+A process contains: one or more threads
+its own memory (code, heap, stack) resources (files, OS handles, etc.)
+From the CPU’s view:
+The process matters only because it defines which memory the thread can access.
+But the CPU still executes threads, not processes.
+
+4️⃣ Task — a scheduler concept
+The meaning varies by OS, but from a low-level CPU perspective:
+A task is something the OS schedules on the CPU.
+Often a task = a thread (Linux: “task_struct” represents a thread).
+Sometimes people use “task” to refer to a process or a unit of work, but the CPU treats it as a schedulable entity.
+From the CPU’s view:
+A task is “the next thing I should run,” usually a thread.
+
+✔️ Final, simple mapping (CPU-centric)
+Term	What the CPU sees
+Instruction	The CPU executes these directly
+Thread	A sequence of instructions for the CPU to run
+Process	A container that provides memory/context for threads
+Task	A schedulable unit (usually a thread) chosen by the OS for the CPU
+📌 One-sentence version
+The CPU executes instructions from threads; threads belong to processes; the OS schedules tasks (usually threads) onto the CPU.
+                           ┌────────────────────────┐
+                           │        TASK (OS)       │
+                           │  "Something to run"    │
+                           └────────────┬───────────┘
+                                        │
+                                        ▼
+                          ┌──────────────────────────┐
+                          │       PROCESS            │
+                          │  Memory + resources      │
+                          │  (address space)         │
+                          └────────────┬─────────────┘
+                                       │
+                     contains          │
+                     1 or many         │
+                                       ▼
+                          ┌──────────────────────────┐
+                          │         THREAD           │
+                          │  A sequence of CPU steps │
+                          │  (runs inside a process) │
+                          └────────────┬─────────────┘
+                                       │
+                                       ▼
+                         ┌───────────────────────────┐
+                         │       INSTRUCTION         │
+                         │  Smallest CPU operation   │
+                         └───────────────────────────┘
+
+
+🔵 What is multithreading?
+Multithreading = having more than one thread running within the same process.
+This allows a single program to do multiple things “at once,” such as:
+a web browser loading a page while playing a video
+a game handling physics, rendering, and input simultaneously
+a server handling thousands of client requests in parallel
+
+🔵 CPU-level Multithreading
+There are two meanings:
+A. OS Multithreading
+The OS schedules different threads to different CPU cores.
+
+B. Hardware Multithreading (SMT / Hyper-Threading)
+Some CPU cores can execute instructions from multiple threads at once, sharing internal resources.
+Example: Intel Hyper-Threading → each core has 2 logical threads.
+
+🔵 Ultra-short definition
+Multithreading lets one program do multiple things at once by running multiple threads simultaneously (or appearing to)
+
+Multithreading = multiple threads inside one process
+Process
+ ├── Thread 1
+ ├── Thread 2
+ └── Thread 3
+   (All share the same memory)
+
+
+All threads share the same variables, heap, and memory.
+
+Lightweight, fast communication.
+
+One thread can block or corrupt the entire process if not synchronized.
+
+
+Multiprocessing = multiple processes running at same time
+Process A (own memory)
+  ├── Thread 1
+Process B (own memory)
+  ├── Thread 1
+Process C (own memory)
+  ├── Thread 1
+
+
+Each process has its own memory.
+
+Strong isolation → more reliable.
+
+Higher memory usage and overhead.
+
+Communication is harder (IPC needed).
+
+Multiprocessing = multiple processes running at same time
+Process A (own memory)
+  ├── Thread 1
+Process B (own memory)
+  ├── Thread 1
+Process C (own memory)
+  ├── Thread 1
+
+
+Each process has its own memory.
+
+Strong isolation → more reliable.
+
+Higher memory usage and overhead.
+
+Communication is harder (IPC needed).
+
+
+🔵 When to use which?
+✔ Use Multithreading when:
+You need many small tasks with shared data
+Your program spends time waiting (I/O)
+You want low overhead and fast context switching
+Examples:
+Web browsers
+Servers handling many connections
+Games (render thread, physics thread, etc.)
+
+✔ Use Multiprocessing when:
+You need true parallel CPU execution
+Workloads are heavy and independent
+You want high reliability and isolation
+Examples:
+Machine learning (model training)
+Video encoding
+CPU-heavy data processing
+Running multiple large programs
+
+***Ultra-short version
+Multithreading = Many threads inside one process, shared memory, fast, but risky.
+Multiprocessing = Many processes, separate memory, slower communication, but safer and better for CPU-heavy tasks.
