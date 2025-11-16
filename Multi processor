@@ -432,3 +432,152 @@ No — they are the same thing.
 9️⃣ What hardware features help SMP scheduling?
 🔟 How does task scheduling affect hardware like caches and interconnects?
 
+🔹 Spend 90% focus on SMP topics:
+MESI, MOESI
+Directory-based coherency
+Multi-core fabric interactions
+Memory ordering
+Scheduling & load balancing basics
+Cache migration cost
+Multi-core pipeline interactions
+CPU affinity, task migration, NUMA basics
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                                                   AMP SYSTEMS
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Read from that ARM V7 print out.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                                                    HMP SYSTEMS
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔥 HMP (Heterogeneous Multi-Processing)
+⭐ Definition (Simple & Accurate):
+
+HMP is a system where multiple cores are not identical, but the OS still sees them as a unified CPU cluster and can schedule tasks across them dynamically.
+
+So in HMP:
+
+Cores = heterogeneous (different performance/power)
+
+OS = one OS running across all of them
+
+Scheduling = OS decides which task runs on which type of core
+
+🧩 HMP sits between SMP and AMP
+System	Cores	OS	Scheduling
+SMP	Identical	One OS	Any core runs any task
+AMP	Often different	Multiple OSs	No unified scheduling
+HMP	Different	One OS	Task can run on any core (OS aware of heterogeneity)
+
+HMP combines:
+
+SMP’s shared-memory, unified OS
+
+AMP’s heterogeneous cores
+
+🧠 The Most Famous HMP Example: ARM big.LITTLE
+
+Arm’s big.LITTLE architecture is the classic HMP system.
+
+Two types of cores:
+
+big cores → High performance, high power
+
+LITTLE cores → Energy-efficient, slower
+
+The OS scheduler decides:
+
+Big core for heavy tasks
+
+LITTLE core for background or low load
+
+More modern designs use:
+
+big + middle + LITTLE
+
+performance + efficiency cores (like Apple M-series, Intel Alder Lake/P/E cores)
+
+🔧 How HMP Works Internally
+
+All cores share:
+
+One memory subsystem
+
+One coherency domain
+
+One OS
+
+Unified physical address space
+
+Shared interconnect/fabric
+
+But cores differ in:
+
+Microarchitecture (issue width, cache size, pipeline depth)
+
+Power/performance targets
+
+Clock/voltage domains
+
+Dynamic frequency scaling (DVFS)
+
+🔥 Scheduling in HMP
+
+This is the biggest conceptual point an interviewer may test.
+
+OS Scheduling Goals:
+
+Put light tasks on LITTLE cores
+
+Put compute-heavy tasks on big cores
+
+Migrate tasks dynamically based on load, temperature, power policies
+
+Many schedulers use:
+
+Energy Aware Scheduling (EAS)
+
+Performance governors
+
+Thermal governors
+
+⚙ Hardware Requirements for HMP
+
+To support the OS treating heterogeneous cores as a unified system:
+
+Shared coherent memory hierarchy
+(L1 private, L2/L3 shared, snoop-based or directory)
+
+ISA compatibility across core types
+(ARM: big and little share same ISA subset)
+
+Unified interrupt controller
+
+Unified timers
+
+Unified interconnect fabric (CCI, CMN, NoC)
+
+Well-defined frequency/voltage domains
+
+📌 HMP vs SMP vs AMP — one simple diagram
+SMP: [Core0][Core1][Core2][Core3]  (all identical, shared memory, one OS)
+
+AMP: [CoreA runs RTOS] | [CoreB runs Linux] | [DSP runs firmware]
+     (different OSes, separate or partially shared memory)
+
+HMP: [big cores] [little cores] (different power/perf but one OS, shared memory)
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+🎤 Common Interview Questions on HMP
+1. What is the difference between HMP and SMP?
+2. How is scheduling handled in HMP?
+3. Why is ISA compatibility required in HMP?
+4. Does HMP require hardware coherency?
+5. How does big.LITTLE migration work?
+6. What is Energy-Aware Scheduling (EAS)?
+7. What’s the difference between cluster migration and core migration in big.LITTLE?
+8. What fabric/interconnect features must support HMP?
+9. Which coherency protocols are used in heterogeneous clusters?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
