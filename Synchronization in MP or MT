@@ -1,0 +1,56 @@
+To know: 
+What is Synchronization and why do we need it ?
+what problems do Synchronization solve in Multiprocessing and multithreading system
+Can atomics be used to solve multiprocessing and multithreading problems ? And read about Atomics.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+✅ What Is Synchronization?
+Synchronization is the set of techniques used to ensure that multiple threads or processes access shared resources safely and execute in the correct order.
+Shared resources include:
+Variables / memory
+Files
+Databases
+I/O devices
+Data structures (lists, queues, buffers, etc.)
+Without synchronization, simultaneous access can cause unpredictable and incorrect behavior. 
+
+🔥 Why Do We Need Synchronization?
+1. To Prevent Race Conditions
+
+A race condition happens when two threads/processes try to access or modify shared data at the same time, causing inconsistent results.
+
+Example without sync:
+Thread A: balance = balance + 10
+Thread B: balance = balance + 20
+If both read the old balance before either writes it, updates are lost.
+
+2. To Avoid Data Corruption
+When multiple threads write to shared memory or files without coordination, the data can become corrupted or invalid.
+
+3. To Ensure Consistent Program Behavior
+Synchronization ensures predictability. Without it, thread execution order becomes random, leading to intermittent bugs (“heisenbugs”).
+
+4. To Coordinate Activities Between Threads/Processes
+Sometimes one task must wait for another to complete.
+Example:
+Thread A produces data
+Thread B consumes it
+You use mechanisms like semaphores or condition variables.
+
+5. To Provide Mutual Exclusion (Safety)
+Mutual exclusion ensures only one thread accesses a critical section at a time.
+
+
+🧰 Common Synchronization Mechanisms
+For both multiprocessing and multithreading:
+Mutex / Lock
+Semaphore
+Monitor / Condition Variable
+Event
+Barrier
+Read-Write Lock
+ Special mention for multiprocessing:
+ Inter-process communication (IPC) mechanisms:
+ Shared memory + locks
+ Message queues
+ Pipes
+ Signals
