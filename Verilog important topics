@@ -411,3 +411,41 @@ end
 What is the issue?
 Answer:
 ***************************************************************
+If we have 2 "if-else" block inside an always block, how will they execute ?
+Inside a single always block, all statements execute sequentially from top to bottom, in the order they are written — just like lines of C code.
+
+So if you write two if-else blocks inside one always @(*) or always @(posedge clk) block:
+always @(*) begin
+    if (cond1)
+        a = 1;
+    else
+        a = 0;
+
+    if (cond2)
+        b = 1;
+    else
+        b = 0;
+end
+✅ Execution behavior
+
+First if (cond1) is checked → a is assigned.
+
+Then after that, second if (cond2) is checked → b is assigned.
+
+They are not parallel.
+They behave like:
+
+1. evaluate cond1
+2. assign a
+3. evaluate cond2
+4. assign b
+
+⏱ In Combinational Logic (always @(*))
+Even though the lines execute sequentially in simulation, the synthesized hardware is parallel combinational logic.
+But the order still matters if one assignment depends on another, like:
+x = y;
+y = x;
+or chained logic
+
+⏱ In Sequential Logic (always @(posedge clk))
+All non-blocking assignments (<=) update at the end of the clock, so order usually does not matter unless you use blocking (=), which can change behavior.
