@@ -1,0 +1,413 @@
+swapping of 2 variables a,b in verilog:
+
+which one can we use: 
+Case1
+always@(posedge clk)
+a=b
+
+always@(posedge clk)
+b=a
+
+case 2
+always@(posedge clk)
+a<=b
+
+always@(posedge clk)
+b<=a
+
+Case 3
+always@(posedge clk)
+a<=b
+b<=a
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+in below verilog code:
+always @(posedge clk)  //always block1 
+    x = y; 
+
+always @(posedge clk) // always block 2 
+    z = m; 
+
+which will execute first ?
+
+✅ Both blocks are triggered at the SAME time, and
+❗ Verilog does NOT define which one executes first.
+✔ Correct answer: The order is UNDEFINED.
+
+Verilog's event scheduler places both blocks in the active region for posedge clk.
+When multiple always blocks are sensitive to the same event, they can be executed in any order, and that order:
+Is NOT specified by the language
+Can differ between simulators
+Can differ between simulation runs
+Cannot be relied upon
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+in below verilog code:
+always @(posedge clk)  //always block1 
+   #5; x = y;  
+
+always @(posedge clk) // always block 2 
+    z = m; 
+
+which will execute first ?
+
+Short answer:
+⭐ Block 2 will execute first. Long answer with explanation below.
+✔ Why Block 2 executes first
+
+Step-by-step event scheduler behavior:
+🟩 1. posedge clk happens → both blocks are triggered
+Both always @ (posedge clk) blocks enter the Active Region.
+
+🟩 2. Verilog starts executing Block 1
+Inside Block 1:
+#5;x = y;
+The first statement is a delay (#5).
+A delay moves execution of the rest of the block into a future event,
+NOT continuing inside Active Region.
+So:At time T, Block 1 reaches #5,
+It suspends execution,
+And schedules the remaining statement (x = y) at time T + 5.
+So Block 1 does NOT execute x = y now.
+
+🟩 3. Block 2 executes immediately
+Block 2 has no delay:
+z = m;   // runs immediately in Active Region
+
+So at time T, Block 2 finishes completely.
+🟩 4. After 5 time units (time = T + 5)
+Block 1 wakes up and executes:
+x = y;
+⭐ Final Execution Order (Timeline)
+Time = T (posedge clk):
+Block 1 starts → hits #5, suspends
+Block 2 executes completely → z = m
+Time = T + 5:
+3. Block 1 resumes → x = y
+
+⭐ Final Answer
+Time	What happens
+T	Block 2 executes first → z = m
+T + 5	Block 1 executes → x = y
+
+So:✔ Block 2 executes first
+because Block 1 is delayed by #5 before doing x = y.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+what is difference between Code1 and code2
+
+Code1:
+always@(posedge clk)
+x=y;
+
+always@(posedge clk)
+z=m;
+
+Code2:
+always@(posedge clk)
+begin
+x=y;
+z=m;
+end
+
+Code1:
+✔ Meaning:
+Two separate sequential processes
+Both triggered by posedge clk
+Both update their variables on each clock edge
+❗ Order between the two blocks is NOT defined
+Verilog does not specify which block runs first.
+
+⭐ Code 2 — One Always Block
+✔ Meaning:
+One sequential process
+Triggered by posedge clk
+Statements execute in fixed order (x=y executes first, then z=m)
+
+⭐ Do they generate the same hardware?
+✔ Yes — if the signals are independent
+
+| Aspect                  | Code 1                         | Code 2                           |
+| ----------------------- | ------------------------------ | -------------------------------- |
+| Number of always blocks | 2                              | 1                                |
+| Execution order         | **Undefined**                  | **Fixed: x=y first, z=m second** |
+| Risk of race            | Possible (if dependent)        | None                             |
+| Synthesized hardware    | Same (for independent x and z) | Same                             |
+
+⭐ Final Conclusion
+Functionally and for synthesis, Code1 and Code2 are the same because x and z are independent.
+But Code2 is safer and deterministic.
+Because all related registers are updated inside the same clocked always block.
+If you'd like, I can show cases where Code1 gives wrong results but Code2 works correctly.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                                           SEQUENTIAL BLOCK
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+in below verilog code:
+always @(posedge clk)  //always block1 
+    x <= y; 
+
+always @(posedge clk) // always block 2 
+    z <= m; 
+
+⭐ Which always block executes first?
+✔ Both blocks are triggered at the same time.
+✔ Their execution order is NOT defined by Verilog.
+✔ Either block may execute first.
+That’s the correct answer.
+⭐ But here is the important part:
+Because you are using non-blocking assignments (<=), the execution order does NOT matter.
+Why?
+⭐ How non-blocking (<=) works
+When the simulator hits:
+x <= y; or z <= m;
+it does not update x or z immediately.
+Instead:
+The RHS (y or m) is evaluated now
+The LHS update (x or z) is scheduled for later (NBA region)
+So both of these go into the NBA queue, regardless of which block executed first.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+what is difference between Code1 and code2
+Code1:
+always@(posedge clk)
+x<=y;
+always@(posedge clk)
+z<=m;
+
+Code2:
+always@(posedge clk)
+begin
+x<=y;
+z<=m;
+end
+
+Here is the precise and correct difference between Code1 and Code2.
+
+⭐ Code 1 — Two clocked always blocks
+always @(posedge clk)
+    x <= y;
+always @(posedge clk)
+    z <= m;
+
+✔ Meaning
+Two separate sequential processes
+Both triggered by the same posedge clk
+Both execute in the NBA region (non-blocking)
+❗ Execution order is undefined
+Verilog does not guarantee whether block1 or block2 is simulated first.
+✔ But result is always correct
+Because <= (non-blocking) schedules updates later, execution order does not affect final values.
+✔ Synthesizes to:
+One flip-flop for x
+One flip-flop for z
+
+⭐ Code 2 — One clocked always block
+always @(posedge clk) begin
+    x <= y;
+    z <= m;
+end
+
+✔ Meaning
+One sequential process
+Statements run in fixed order: x<=y first, then z<=m
+But because both are <=, they still update together in NBA region
+✔ Synthesizes to:
+Same flip-flop for x
+Same flip-flop for z
+
+⭐ Functional Comparison
+Aspect	Code 1	Code 2
+| Aspect                      | Code 1                         | Code 2    |
+| --------------------------- | ------------------------------ | --------- |
+| # always blocks             | 2                              | 1         |
+| Execution order             | **Undefined**                  | **Fixed** |
+| Updates done in NBA region? | ✔ Yes                          | ✔ Yes     |
+| Race possible?              | ❌ No (because RHS independent) | ❌ No      |
+| Synthesized hardware        | **Same**                       | **Same**  |
+
+⭐ Final Answer
+
+Code1 and Code2 generate exactly the same hardware and behave the same,
+because:
+Both use non-blocking assignments
+RHS signals (y and m) are independent
+Updates happen in the NBA region simultaneously
+The only difference:
+Code1 uses two processes with undefined execution order
+Code2 uses one process with defined ordering (but irrelevant because of <=)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                            SOME TRICKY INTERVIEW QUESTIONS RELATED TO THIS
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+✅ Hard questions
+✅ Multiple-choice questions
+✅ Debug-the-code questions
+✅ Coding-round Verilog exercises
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+⭐ 6. Tricky synthesis question
+Question: What hardware is synthesized from:
+assign x = y;
+Answer:A combinational wire from y to x. No flip-flop.
+
+⭐ 8. Blocking vs Non-blocking trick
+Question: Inside one always block:
+always @(posedge clk) begin
+    a = b;
+    c <= a;
+end
+
+What does c get?
+Answer: c gets the old value of a, NOT the new one.
+Explanation
+a = b executes in Active region → immediate update
+But c <= a is evaluated using old a, because NBA region always uses old values.
+This is one of the most frequent interview traps.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                  ✅ Hard questions: 🔥 Hard & Tricky Verilog Interview Questions (With Answers)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+1️⃣ Two always blocks, same clock, non-blocking assignment
+Question:always @(posedge clk)
+    x <= y;
+always @(posedge clk)
+    z <= x;
+
+Assume y = 5 at this clock edge. What value will z get after the clock?
+
+Answer
+z gets the old value of x, not 5.
+Why?
+
+Non-blocking assignments (<=) update at the end of the time-step, in the NBA region.
+Both always blocks read old values and schedule updates.
+So:
+Block1: schedules x = y_old
+Block2: schedules z = x_old
+Order doesn’t matter at all.
+Both read the pre-clock values.
+
+2️⃣ Blocking vs non-blocking interaction between two always blocks
+Question
+always @(posedge clk)
+    x = y;   // blocking
+
+always @(posedge clk)
+    z = x;   // blocking
+
+
+Is there a possible race?
+Will z get y or old x?
+
+Answer
+
+Yes, a race condition exists.
+
+The order of execution of the two always blocks is undefined, so:
+
+If block1 executes first → x=y ⇒ block2 sees new x
+
+If block2 executes first → sees old x (race)
+
+Never mix blocking assignments between two clocked always block
+6️⃣What is wrong with this?
+
+always @(*) begin
+    if (en)
+        q = d;
+end
+Answer:Latch inferred because q is not assigned when en = 0.
+
+7️⃣ Race condition when multiple drivers exist
+Question
+always @(posedge clk) x <= a;
+always @(posedge clk) x <= b;
+What happens?
+Answer
+Illegal — multiple drivers to same register.
+Synthesis error.
+9️⃣ What does this Verilog slice mean?
+5️⃣ Difference between these slices
+a = x[5:2];
+a = x[2 +: 4];
+a = x[5 -: 4];
+Answer:
+[5:2] → bits 5,4,3,2
+[2 +: 4] → start=2, width=4 → 5:2
+[5 -: 4] → start=5, width=4 → 5:2
+All three same result.
+
+3️⃣ Does order of always blocks matter in synthesis?
+Answer:
+No. RTL describes hardware. Synthesis does not consider ordering.
+Only simulation ordering differs.
+4️⃣ Why is the following code bad in hardware design?
+always @(*) begin
+    a = b + c;
+    b = a + d;
+end
+Answer:
+Creates a combinational feedback loop → unstable, non-synthesizable.
+
+⭐⭐⭐ L3 – Hardcore (Qualcomm DSP / Nvidia GPU / AMD CPU level)
+1️⃣ Describe how non-blocking assignments are scheduled in Verilog simulation.
+Events go through:
+Active Region
+Inactive Region
+NBA Region
+Monitor Region
+Registers update in NBA, guaranteeing simultaneity.
+
+2️⃣ You have two sequential always blocks. Can their simulation order change the design?
+Example:
+always @(posedge clk) a <= b;
+always @(posedge clk) b <= a;
+
+Answer:No race.
+Because both use non-blocking, so order doesn’t matter.
+Hardware = two flip-flops swapping values every cycle.
+
+4️⃣ What is a combinational cycle in RTL? Give an example and explain why it breaks STA.
+Example:
+assign x = y + 1;
+assign y = x + 1;
+
+Hardware cannot converge.
+STA cannot compute a stable delay.
+
+6️⃣ DSP-style multiply-accumulate race question
+always @(posedge clk)
+    acc <= acc + (a * b);
+
+Why might this fail timing?
+
+Answer:
+Because (a*b) is large combinational logic.
+Critical path = multiply → add → register.
+
+Fix using pipelining:
+always @(posedge clk) mul <= a*b;
+always @(posedge clk) acc <= acc + mul;
+
+8️⃣ Why should you avoid huge case statements in combinational logic?
+Because:
+synthesizes into deep mux tree
+huge delay
+poor timing
+area explosion
+possible latch inference if cases incomplete
+
+9️⃣ What does this Verilog slice mean?
+📦 Example
+Let:ACCW = 16, i = 3
+Expression becomes:
+acc_in_flat[3*16 +: 16] = acc_in_flat[48 +: 16]
+Which means: acc_in_flat[63:48]
+
+***************************************************************
+is there any issue in below verilog code:
+always @(*) begin
+    a = b & c;
+    b = a | d;
+end
+What is the issue?
+Answer:
+***************************************************************
