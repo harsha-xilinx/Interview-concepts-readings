@@ -449,3 +449,109 @@ or chained logic
 
 ⏱ In Sequential Logic (always @(posedge clk))
 All non-blocking assignments (<=) update at the end of the clock, so order usually does not matter unless you use blocking (=), which can change behavior.
+============================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
+============================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
+============================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
+You said:
+in this code :
+always @(posedge clk or negedge rst_n) begin
+  if (!rst_n) begin
+    out_data_reg <= 'b0;
+    cntr <= 'b0;
+  end else begin
+    if (|in_data)  // if-block 1 
+      cntr <= N;
+    else
+      cntr <= cntr - 1'b1;
+
+    if (cntr == N)  // if block 2 
+      out_data_reg <= in_data;
+    else
+      out_data_reg <= out_data_reg;
+  end
+end
+
+Is there any fix topology, that "if-block 1" will execute first then "if-block 2" ?
+or my question is which of these "if-block 1" or "if-block 2" will execute first?
+
+Yes, there is a fixed execution order in simulation.
+
+Inside an always block, statements execute sequentially, top → bottom, just like software.
+
+So:
+
+if-block 1 executes first
+
+if-block 2 executes second
+
+But…
+
+Because you are using non-blocking (<=) assignments, the updates from if-block 1 do NOT take effect until the end of the clock tick.
+
+So even though execution order is fixed, the value of cntr inside if-block 2 is still the old value, not the new one.
+✔️ Why?
+
+Let’s break down what happens at a posedge clock:
+
+Step 1 — Simulation executes lines in order
+
+It reaches if-block 1
+
+Schedules cntr <= N or cntr <= cntr - 1
+
+Then it reaches if-block 2
+
+Checks if (cntr == N) using the old value of cntr
+
+Step 2 — At the end of the timestep
+
+All non-blocking assignments (<=) update simultaneously
+→ cntr gets its new value
+→ out_data_reg gets its new value
+
+This matches real hardware: flops update only on the clock edge, not line-by-line.
+
+✔️ Final Answer
+✔️ The execution order is fixed, and if-block 1 runs before if-block 2.
+❌ But the value of cntr inside if-block 2 is still the old value, because <= delays the update
+
+okay, so if here, we were using blocking assignment, then the updated value of cntr will have used in "if block 2" . right ?
+✔️ Yes — exactly right.
+
+If you replace the non-blocking assignment:
+
+cntr <= N;
+
+
+with blocking assignment:
+
+cntr = N;
+
+
+then:
+
+👉 The updated value will be used immediately inside “if-block 2”
+
+because blocking assignments (=) update the variable right away during simulation.
+
+✔️ Example
+Using blocking (=):
+if (|in_data)        // if-block 1
+    cntr = N;
+else
+    cntr = cntr - 1;
+
+if (cntr == N)       // if-block 2
+    out_data_reg <= in_data;
+
+What happens?
+
+if-block 1 runs first (because code is top→bottom)
+
+cntr is updated immediately
+
+if-block 2 sees the new updated value of cntr
+✔️ Final Answer
+✔️ If using blocking (=), “if-block 2” will use the updated cntr value.
+❌ But you should never use blocking assignments in a clocked always block — it breaks hardware modeling.
+
