@@ -69,6 +69,16 @@ Arithmetic units
 | Global memory | slowest | device     |
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+✅ Definition
+
+A warp is:
+A group of N threads (e.g., 32 in NVIDIA GPUs)
+That execute the same instruction at the same time
+On different data elements
+Using SIMD-style execution, but exposed as “threads” by SIMT
+Think of a warp as:
+“The vector width of a GPU, but expressed as a group of threads instead of vector lanes.”
+
 ✅ 5. Relationship Between GPU and SIMT
 To understand their relationship, we must see how GPU hardware is designed and how SIMT controls execution.
 SIMT is not just a programming idea —
