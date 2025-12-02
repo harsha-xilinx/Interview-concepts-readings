@@ -115,6 +115,11 @@ Both domains use synchronizers on incoming signals.
 4️⃣ Destination sees REQ deasserted → deasserts ACK.
 👉 Both return to idle (REQ=0, ACK=0), ready for the next event.
 
+Simple explanation:
+It ensures that:
+The source sends data and asserts a request (req)
+The destination receives the data, latches it, and sends back an acknowledge (ack)
+The source waits for ack before sending the next data
 
 4. Handshake Timing Diagram
 clk_src    ─┐  ┌─┐  ┌─┐  ┌─┐  ┌─┐  ┌─┐  ┌─┐  ┌─┐
