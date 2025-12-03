@@ -1,3 +1,10 @@
+ChatGPT: Must reads:
+
+https://chatgpt.com/c/692f78cb-3364-8320-b61e-c1d267166748
+https://chatgpt.com/c/692f7993-808c-8323-8a89-e527b7b9730e
+https://chatgpt.com/c/692f7aee-7140-8321-b5de-9b8998a52a9f (most important)
+=========================================================================================
+
 A GPU is  a SIMD (SIMT) machine, except it's not programmed using SIMD instruction.
 It's programmed using threads (SPMD programming model)
 Each thread executes the same code but on a different piece of data.
