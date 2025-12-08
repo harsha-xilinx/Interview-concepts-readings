@@ -1,0 +1,45 @@
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ You tube STA bootcammp: https://www.youtube.com/watch?v=jcKVrkEvoA8&list=PL1h5a0eaDD3rMBdiRd8vyQDr8rRFbe4pG  - watched till video 22  +
++ https://www.vlsiuniverse.com/sta-solved-problems-vlsi-interview-2021/ Question practice 
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+** STA question, can a timing path have setup violation but no hold time violation ?
+Yes — a timing path can absolutely have a setup violation but no hold time violation.
+Setup and Hold analyze opposite timing extremes:
+-------------------------------------------------------------------------------------------------------------
+| Check     | What it cares about            | Violated when              | Fixed by                        |
+| --------- | ------------------------------ | -------------------------- | ------------------------------- |
+| **Setup** | **Max delay** (slow data path) | Data arrives **too late**  | Speed up data / slow down clock |
+| **Hold**  | **Min delay** (fast data path) | Data arrives **too early** | Add delay to data path          |
+
+Therefore:
+A path can easily be:
+Too slow → fails setup
+But still not too fast → passes hold
+
+✔ Why They Are Independent
+Setup and hold depend on different parameters:
+Setup depends on:
+Logic delay (max)
+Clock skew (launch early, capture late)
+Clock period
+
+Hold depends on:
+Logic delay (min)
+Clock skew (launch late, capture early)
+No dependence on clock period
+So adjusting the clock period affects setup but does not affect hold.
+
+📌 Common Real-World Scenario
+
+Imagine:
+You increase the clock frequency (reduce period)
+Suddenly setup fails
+But hold is still fine because min delay did not change
+This is one of the most common STA situations
+
+** can a timing path have hold time violation but no setup time violation ?
+Yes — a timing path can have a hold time violation but no setup time violation.
+This also happens very often in STA.
+
+*** in STA, can we update hold violation without changing data path ? 
