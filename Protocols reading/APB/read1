@@ -1,8 +1,47 @@
 3 Phase:
 IDLE Phase: PSEL->0, PENABLE ->0
-SETUP Phase: PSEL->1, PENABLE ->  
+SETUP Phase: PSEL->1, PENABLE ->  0
 When PSEL ->1, PADDR, PWRITE, PWDATA must be valid  (for write transfer).
 ACCESS Phase: PSEL->1, PENABLE ->1
+************************************************************************************************************************************************
+What is meaning of PSEL signal in APB
+In APB (Advanced Peripheral Bus), the PSEL signal stands for:
+PSEL — Peripheral Select
+Purpose: Selects a specific peripheral (slave) for the current transfer.
+Driven by: APB bridge (master side).
+Active High: 1 means the peripheral is selected; 0 means it is idle.
+
+If multiple peripherals exist, Each peripheral usually has its own PSEL line:
+PSEL_UART
+PSEL_SPI
+PSEL_GPIO
+The APB bridge asserts only one of them based on address decoding.
+so PSEL is selected on basis of address present on PADDR ? 
+
+Yes — PSEL is generated based on the address on PADDR.
+✅ How it works
+Inside the APB bridge, there is an address decoder.
+The master (usually AHB/AXI-to-APB bridge) drives PADDR.
+The address decoder checks the range of PADDR.
+Based on the address range, it asserts the corresponding PSELx line.
+Example
+Suppose you have 3 peripherals:
+| Peripheral | Address Range           | PSEL Signal |
+| ---------- | ----------------------- | ----------- |
+| UART       | 0x4000_0000–0x4000_0FFF | `PSEL_UART` |
+| SPI        | 0x4000_1000–0x4000_1FFF | `PSEL_SPI`  |
+| GPIO       | 0x4000_2000–0x4000_2FFF | `PSEL_GPIO` |
+If PADDR = 0x4000_1200, then:
+UART range? ❌ No
+SPI range? ✔ Yes
+GPIO range? ❌ No
+PSEL_SPI = 1
+PSEL_UART = 0
+PSEL_GPIO = 0
+Key point
+✔ Only 1 PSEL line is high at a time
+✔ Selected strictly by address decoding
+************************************************************************************************************************************************************************************************************
 
 PENABLE must get asserted immediately next clk cycle to when PADDR, PSEL and PWRITE was asserted.
 
