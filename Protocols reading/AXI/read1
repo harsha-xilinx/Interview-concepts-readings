@@ -1,1 +1,187 @@
+Changes Between AXI3 and AXI4
+++++++++++++++++++++++++++++++++++++++++++++++++
+AW
+__________________________
+AWLEN changes between AXI3 and AXI4
+AWQOS, AWREGION, AWUSER not in AXI3
 
+W
+__________________________
+WID only in AXI3, WUSER not in AXI3
+
+
+AR
+__________________________
+ARLEN changes between AXI3 and AXI4
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                             TRANSACTION ATTRIBUTES
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+The AXI protocol defines a set of transaction attributes that support memory and Peripheral Subordinates. 
+The ARCACHE and AWCACHE signals specify the transaction attributes. They control:
+• How a transaction progresses through the system.
+• How any system-level caches handle the transaction.
+
+Table A4-1 Transaction attribute encoding
+AxCACHE Value Transaction attribute
+[0] 0 Non-bufferable
+    1 Bufferable
+[1] 0 Non-cacheable
+    1 Cacheable
+[2] 0 No Read-Allocate
+    1 Read-Allocate
+[3] 0 No Write-Allocate
+    1 Write-Allocate
+
+AxCACHE[0], Bufferable (B) bit
+When this bit is asserted, the interconnect, or any component, can delay the transaction reaching its
+final destination for any number of cycles.
+Note
+Normally, the Bufferable attribute is only relevant to writes.
+
+AxCACHE[1] — Modifiable (a.k.a. Read/Write Allocate allowed)
+1 = Modifiable  0 = Non-modifiable
+If modifiable = 1:
+The master allows the system to modify the data in the location before sending to master.
+It means: caches can allocate memory for the region:
+Write-Allocate
+Read-Allocate
+
+If modifiable = 0:
+No allocation, no cache policy changes.
+
+
+AxCACHE[2] — Read-Allocate
+1 = Allow READ allocation
+0 = No READ allocation
+If set:
+A cache miss on read is allowed to allocate a cache line.
+
+AxCACHE[3] — Write-Allocate
+1 = Allow WRITE allocation
+0 = No WRITE allocation
+If set:
+Write-miss can cause cache to allocate a new line.
+Common for write-back caches.
+
+Typical for cacheable memory.
+| AxCACHE | Meaning                        |
+| ------- | ------------------------------ |
+| Bit 0   | Bufferable                     |
+| Bit 1   | Modifiable (allows allocation) |
+| Bit 2   | Read-allocate                  |
+| Bit 3   | Write-allocate                 |
+
+Common AxCACHE ENCODING:
+| AxCACHE[3:0] | Meaning                                         |
+| ------------ | ----------------------------------------------- |
+| **0000**     | Strongly-ordered, shareable                     |
+| **0001**     | Device, non-bufferable                          |
+| **0010**     | Reserved                                        |
+| **0011**     | Device, bufferable                              |
+| **0100**     | Normal, non-cacheable, non-bufferable           |
+| **0101**     | Normal, non-cacheable, bufferable               |
+| **0110**     | Reserved                                        |
+| **0111**     | Reserved                                        |
+| **1000**     | Normal memory, write-through, no write-allocate |
+| **1010**     | Normal memory, write-through, read-allocate     |
+| **1100**     | Normal memory, write-back, no write-allocate    |
+| **1110**     | Normal memory, write-back, read-allocate        |
+| **1111**     | Normal memory, write-back, read+write allocate  |
+
+⭐⭐ Key Principle:
+Cache allocation bits are ignored if the memory is not cacheable.
+Write-through vs write-back is determined by cacheable + modifiable bits, not isolated bit-3.
+🧠 Easy Rule to Remember
+⭐⭐⭐⭐A region is cacheable only if:
+AxCACHE[1] == 1
+So:
+If AxCACHE[1] = 0 → memory is non-cacheable
+→ write-allocate & read-allocate bits are meaningless
+→ write-back/write-through policy is fixed by the encoding.
+
+🧠 Easy Interpretation Rule
+
+If AxCACHE bit-2 or bit-3 = 1 → memory is cacheable.
+
+If AxCACHE bit-0 = 1 → writes can be buffered.
+
+If AxCACHE bit-1 = 1 → cache can modify/allocate.
+
+AxCACHE[3] high, means write allocate. Then AxCACHE 1000, why tells Normal memory, write-through, no write-allocate ?
+
+✅ Why does AxCACHE = 1000 NOT imply write-allocate, even though bit-3 = Write-Allocate?
+Because AXI does NOT treat the bits independently.
+AxCACHE [3:0] is a coded field → certain combinations are legal and meaningful, others are illegal.
+
+Meaning: You cannot interpret bit-3 alone.
+Only the full 4-bit encoding determines the cache policy.
+
+⭐ The important clarity
+Even though the AXI spec says bit-3 = write-allocate,
+that bit is ONLY meaningful when the memory region is cacheable.
+
+And memory becomes cacheable ONLY when bits [2:0] indicate it.
+Lets decode AxCACHE=1000
+| Bit | Value | Meaning                                                  |
+| --- | ----- | -------------------------------------------------------- |
+| [3] | 1     | (Would normally mean write-allocate IF cacheable region) |
+| [2] | 0     | no read allocate                                         |
+| [1] | 0     | non-modifiable → NOT cacheable                           |
+| [0] | 0     | non-bufferable                                           |
+Because bit-1 = 0, region is non-modifiable → Not cacheable.
+Thus:
+Write-allocate is not applicable for non-cacheable memory.
+So this combination maps to Normal, Write-Through, No Allocate (per AMBA defined table).
+
+
+In AXI3 AxCACHE[1] was called CACHEABLE bits but in AXI4 it's renamed as MODIFIABLE bit
+AxCACHE[1], Modifiable
+In AXI4, the AxCACHE[1] bit is the Modifiable bit. When HIGH, Modifiable indicates that the characteristics of
+the transaction can be modified. When Modifiable is LOW, the transaction is Non-modifiable.
+
+++++++++++++++++++++++++++++++++
+Non-modifiable transactions
+++++++++++++++++++++++++++++++++
+A Non-modifiable transaction is indicated by setting AxCACHE[1] LOW.
+A Non-modifiable transaction must not be split into multiple transactions or merged with other transactions.
+In a Non-modifiable transaction, the parameters that are shown in Table A4-2 must not be changed.
+
+Table A4-2 Parameters fixed as Non-modifiable
+Parameter Signals
+Transfer address AxADDR, and therefore AxREGION
+Burst size      AxSIZE
+Burst length    AxLEN
+Burst type      AxBURST
+Lock type       AxLOCK
+Protection type AxPROT
+
+++++++++++++++++++++++++++++++++
+Modifiable transactions
+++++++++++++++++++++++++++++++++
+A Modifiable transaction is indicated by asserting AxCACHE[1].
+A Modifiable transaction can be modified in the following ways:
+• A transaction can be broken into multiple transactions.
+• Multiple transactions can be merged into a single transaction.
+• A read transaction can fetch more data than required.
+• A write transaction can access a larger address range than required, using the WSTRB signals to ensure that
+only the appropriate locations are updated.
+• In each generated transaction, the following signals can be modified:
+— The transfer address, AxADDR
+— The burst size, AxSIZE
+— The burst length, AxLEN
+— The burst type, AxBURST
+The following must not be changed:
+• The lock type, AxLOCK
+• The protection type, AxPROT
+
+⭐
+Table A4-6 Protection encoding
+AxPROT     Value Function
+[0]       0 Unprivileged access
+          1 Privileged access
+[1]       0 Secure access
+          1 Non-secure access
+[2]       0 Data access
+          1 Instruction access
