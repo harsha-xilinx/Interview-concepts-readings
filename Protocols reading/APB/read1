@@ -1,1 +1,46 @@
+3 Phase:
+IDLE Phase: PSEL->0, PENABLE ->0
+SETUP Phase: PSEL->1, PENABLE ->  
+When PSEL ->1, PADDR, PWRITE, PWDATA must be valid  (for write transfer).
+ACCESS Phase: PSEL->1, PENABLE ->1
+
+PENABLE must get asserted immediately next clk cycle to when PADDR, PSEL and PWRITE was asserted.
+
+
+APB3 Signal list:
+PCLK, PADDR, PWRITE, PSELx, PWDATA, PRDATA, PENABLE, PREADY, PSLVERR
+PSELx -> individual peripheral select lines.
+PENABLE: to control when data transfer is performed.
+PSLVERR -> TO SIGNAL ERROR
+
+++++++++++++++++
+WRITE TRANSFER
+++++++++++++++++
+
+WRITE TRANSFER are of 2 types: with WAIT state, without WAIT state
+How many minimum PCLK cycle, you need in APB protocol to transfer data ? -> 2 PCLK cycles. -> Taking case when at Clk T-> [SEL goes high and in next clk cycle  PEN goes high and in same we have PREADY high, this means data will be transferred here.
+
+Once PEN is high, PREADY goes high immediately, then its a without WAIT state.
+Once PEN is high, PREADY goes high after some clk cycles, then its a  WAIT state.
+
+++++++++++++++++
+READ TRANSFER
+++++++++++++++++
+READ TRANSFER are of 2 types: with WAIT state, without WAIT state
+PWRITE ->0 , read transfer
+
+In both cases PSLVERR should be looked into, when PSEL and PEN and PREADY are high
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+BACKWARD COMPATIBILITY WITH APB2
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+AMBA 2 APB does not support the PREADY and PSLVERR signals
+APB2 subordinates cannot insert wait states
+APB2 subordinate cannot return an error response.
+
+IF CONNECTING and APB3 INTERCONNECT TO AN APB2 SUBORDINATE:
+THE INTEGRATOR CAN TIE OFF PREADY=1 AND PSLVERR=0 at the interconnect
+Zero wait state, no error response
+
 
