@@ -1,3 +1,24 @@
+AMBA 3
+AXI3
+AXI-Lite
+AHB-Lite
+APB3
+ATB (Trace Bus)
+✔ No CHI in AMBA3.
+
+
+AMBA 4
+AXI4
+AXI4-Lite
+AXI-Stream
+ACE
+ACE-Lite
+APB4
+ATB
+✔ No CHI in AMBA4.
+
+CHI belongs to AMBA 5, not AMBA 3 or AMBA 4. AMBA 4 introduces ACE/ACE-Lite; CHI comes later for AMBA5
+
 Changes Between AXI3 and AXI4
 ++++++++++++++++++++++++++++++++++++++++++++++++
 AW
