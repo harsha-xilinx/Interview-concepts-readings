@@ -1,0 +1,253 @@
+++++++++++++++++++++++++++++++++++++++++++++++
+TRANSACTION ORDERING
+++++++++++++++++++++++++++++++++++++++++++++++
+The AXI protocol includes AXI ID transaction identifiers. 
+A Manager can use these to identify separate transactions that must be returned in order.
+All transactions with a given AXI ID value must remain ordered, but there is no restriction on the ordering of
+transactions with different ID values.
+Same AXID: Remain in order.
+Different AXID: Change can occur
+A single physical port can support out-of-order transactions by acting as anumber of logical ports, each handling its transactions in order
+
+The interconnect must ensure that the read data from a sequence of transactions with the same ARID value targeting
+different Subordinates is received by the Manager in the order that it issued the addresses
+
+read: https://chatgpt.com/c/6938de31-2d6c-8322-a40e-4b7c9478b20c
+
+A6.7.1 Early read response
+For Normal read transactions, an intermediate component can respond with read data from a local memory if it is
+up-to-date with respect to all earlier writes to the same or overlapping address. In this case, the request is not
+required to propagate beyond the intermediate component.
+An intermediate component must observe ID ordering rules, which means a read response can only be sent if all
+earlier reads with the same ID have already had a response.
+
+In above statement intermediate component refers to cache memory.
+Becoz, AxCACHE[1]: 0-> NON CACHEABLE , DEVICE MEMORY
+                   1-> CACHEABLE
+
+Early write response
+For Bufferable write transactions, an intermediate component can send an early write response for transactions that
+have no downstream observers. If the intermediate component sends an early write response, the intermediate
+component can store a local copy of the data, but must propagate the transaction downstream, before discarding that
+data.
+
+
+Are the exclusive access introduced in AXI4 or it was their in older version also ?
+Exclusive accesses were not introduced in AXI4 — they already existed in earlier AXI versions.
+🕰️ Exclusive Access — When It First Appeared
+✅ AXI3 already supported exclusive access
+Exclusive access was part of the AXI3 specification (the version used in ARM AMBA 3).
+AXI3 included:
+AxLOCK signal (2 bits in AXI3)
+Support for load-exclusive / store-exclusive
+Hardware mechanism for atomic operations
+So exclusive access existed before AXI4.
+
+Changes in AXI4:
+AxLOCK reduced to 1 bit
+Burst-based locked accesses were removed
+Only exclusive access (not locked access) is supported
+Protocol made features simpler and optimized for high performance
+
+| Version           | Exclusive Access Support | Notes                                                  |
+| ----------------- | ------------------------ | ------------------------------------------------------ |
+| **AXI3 (AMBA 3)** | ✔ Yes                    | 2-bit AxLOCK, exclusive + locked accesses              |
+| **AXI4 (AMBA 4)** | ✔ Yes                    | 1-bit AxLOCK, only exclusive access (no locked bursts) |
+
+QoS interface signals
+The AXI4 signal set is extended to support two 4-bit QoS identifiers:
+AWQOS A 4-bit QoS identifier, sent on the write address channel for each write transaction.
+ARQOS A 4-bit QoS identifier, sent on the read address channel for each read transaction.
+In this specification, AxQOS indicates AWQOS or ARQOS.
+The protocol does not specify the exact use of the QoS identifier. This specification recommends that AxQOS is
+used as a priority indicator for the associated write or read transaction. A higher value indicates a higher priority
+transaction.
+A default value of 0b0000 indicates that the interface is not participating in any QoS scheme.
+
+QoS signaling, as defined in AXI4, can be used with any compatible system-level QoS methodology.
+The default system-level implementation of QoS is that any component with a choice of more than one transaction
+to process selects the transaction with the higher QoS value to process first. This selection only occurs when there
+is no other AXI constraint that requires the transactions to be processed in a particular order.
+Note
+This means that the AXI ordering rules take precedence over ordering for QoS purposes.
+
++++++++++++
+AxQOS
+++++++++++++
+We have 3 masters connected to an AXI interconnect:
+| Master | Function | Traffic type                      |
+| ------ | -------- | --------------------------------- |
+| M0     | CPU      | Latency-critical                  |
+| M1     | GPU      | Medium-priority burst traffic     |
+| M2     | DMA      | Low-priority background transfers |
+Each one sends a write request simultaneously.
+The interconnect uses AWQOS for priority arbitration.
+QoS higher value ⇒ higher priority.
+QoS values chosen by each master
+| Master   | Transaction | AWQOS | Priority meaning    |
+| -------- | ----------- | ----- | ------------------- |
+| CPU (M0) | W_CPU       | 0xF   | Highest priority    |
+| GPU (M1) | W_GPU       | 0x7   | Medium priority     |
+| DMA (M2) | W_DMA       | 0x0   | Background priority |
+
+🟦 Step 1 — Address Phase: Masters send AW signals
+Master M0 (CPU — urgent write)
+AWID    = 2
+AWADDR  = 0x8000_1000
+AWLEN   = 0x3        (4-beat burst)
+AWSIZE  = 0x2        (4 bytes/beat)
+AWBURST = INCR
+AWQOS   = 0xF        (highest priority)
+AWVALID = 1
+
+Master M1 (GPU — medium priority)
+AWID    = 5
+AWADDR  = 0x9000_2000
+AWLEN   = 0x7        (8-beat burst)
+AWSIZE  = 0x2
+AWBURST = INCR
+AWQOS   = 0x7
+AWVALID = 1
+
+Master M2 (DMA — background transfer)
+AWID    = 1
+AWADDR  = 0x7000_3000
+AWLEN   = 0xF        (16-beat burst)
+AWSIZE  = 0x2
+AWBURST = INCR
+AWQOS   = 0x0        (lowest)
+AWVALID = 1
+
+
+All three want to access the same slave at the same time.
+
+🟧 Step 2 — Arbitration in the Interconnect
+
+The interconnect examines:
+
+AWVALID from all masters
+
+Their AWQOS values
+
+Master	AWQOS	Priority
+CPU	0xF	1st
+GPU	0x7	2nd
+DMA	0x0	3rd
+Arbitration result:
+
+CPU wins first
+
+GPU second
+
+DMA last
+
+The interconnect asserts AWREADY only for the selected master.
+🟥 Step 3 — Slave Receives Address in QoS Order
+Cycle 1 — CPU (highest QoS)
+AWID = 2
+AWADDR = 0x8000_1000
+AWREADY = 1
+
+
+Interconnect blocks AWREADY for GPU and DMA this cycle.
+
+Cycle 2 — GPU (medium QoS)
+AWID = 5
+AWADDR = 0x9000_2000
+AWREADY = 1
+
+Cycle 3 — DMA (lowest QoS)
+AWID = 1
+AWADDR = 0x7000_3000
+AWREADY = 1
+
+🟩 Step 4 — Write Data Phase WDATA
+
+The slave now accepts WDATA for each AWID in the order they were issued:
+
+CPU sends 4 beats
+
+GPU sends 8 beats
+
+DMA sends 16 beats
+
+QoS affects address arbitration, not the WDATA phase.
+
+🟪 Step 5 — Response Phase (Optional QoS Influence)
+
+If the slave also uses B channel QoS (per implementation), it may return:
+
+CPU first:
+BID = 2, BRESP = OKAY
+
+GPU next:
+BID = 5, BRESP = OKAY
+
+DMA last:
+BID = 1, BRESP = OKAY
+
+
+Not mandatory, but common.
+
+🧠 What This Example Demonstrates
+
+This shows how QoS is actually used:
+
+✔ No effect on correctness
+✔ Only influences arbitration priority
+✔ Higher AWQOS = faster acceptance of AWADDR
+✔ Interconnect can dynamically prioritize latency-critical masters
+
+🌟 Final Summary
+Master	QoS	Result
+CPU	0xF	Wins arbitration, address accepted first
+GPU	0x7	Accepted second
+DMA	0x0	Accepted last
+
+QoS does not change the AXI protocol behavior—just the order in which transactions get serviced.
+
+++++++++++++
+AWAKEUP  - Introduced in AXI5
+++++++++++++
+✅ What is the use of AWAKEUP in AXI5?
+AWAKEUP is a low-power–related signal used by a Manager (master) to wake up a Subordinate (slave) interface that is in a low-power or clock-gated state.
+AWAKEUP is an AXI5 signal used for low-power system wakeup.
+It marks a transaction as “wakeup-capable,” meaning this transaction should wake up a downstream component that is currently in a low-power or clock-gated state.
+
+| Transaction Type       | AWAKEUP | When Used                                      |
+| ---------------------- | ------- | ---------------------------------------------- |
+| Normal AXI transaction | 0       | Default, most of the time                      |
+| Wake-up transaction    | 1       | Only when slave might be asleep or clock-gated |
+
+📡 How it works (simple sequence)
+💤 Step 1: Subordinate is asleep
+Its clock may be gated
+ARREADY and AWREADY may be deasserted
+🔔 Step 2: Master asserts AWAKEUP
+AWAKEUP = 1
+This tells the slave:
+“Wake up, I need to send an address soon.”
+🔄 Step 3: Slave ungates clock
+Enables internal clock
+Powers up internal logic
+Gets ready to accept new transfers
+🚀 Step 4: Master sends AW/AR
+AWVALID = 1
+ARVALID = 1
+✔ Step 5: Slave responds normally
+AWREADY = 1 
+ARREADY = 1
+
+🎯 Why AWAKEUP is useful
+Without AWAKEUP
+Master sends AWVALID
+Slave clock is stopped
+Master waits forever with AWVALID=1
+Unpredictable latency
+Protocol-level deadlock risk if not managed externally
+
+With AWAKEUP
+Slave wakes before the transfer
+Latency becomes deterministic
+No stalling of AWVALID/ARVALID
+Power-saving works seamlessly
