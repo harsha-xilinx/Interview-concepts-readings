@@ -1,0 +1,59 @@
+2. What does “Out-of-Order” mean?
+In AXI, transactions are issued by the master and responded to by the slave.
+
+In-order transaction: The responses come back in the same order as they were issued.
+Example: If Master sends T1 → T2 → T3, the slave responds T1 → T2 → T3.
+
+Out-of-order transaction: The responses can come back in a different order than they were issued.
+Example: Master sends T1 → T2 → T3, but slave responds T2 → T1 → T3.
+
+So, out-of-order means that the completion order of transactions is not necessarily the same as the issue order.
+
+AXI Ordering Rules
+++++++++++++++++++++++++
+AXI doesn’t allow arbitrary reordering for all transactions. There are rules:
+a) ID-Based Ordering
+Every transaction has an ID (AxID).
+Ordering is guaranteed only per ID.
+For a given ID, the slave must return responses in the order issued.
+For transactions with different IDs, out-of-order responses are allowed.
+
+Examples:
+Write transactions: B responses can come back in a different order if they have different IDs.
+Read transactions: R responses can come back out-of-order for different IDs.
+
+
+++++++++++++++++++++++
+why WID is eradicated from AXI4?
+++++++++++++++++++++++
+Why WID Was Removed in AXI4 (Compared to AXI3)
+In AXI3, the WID (Write ID) signal existed on the W channel.
+In AXI4, WID was completely removed.
+Reason 1: AXI4 enforces in-order write data for each ID
+In AXI3, the protocol allowed write data beats to arrive out-of-order, so the slave needed WID to know which write transaction each WDATA beat belonged to.
+Example in AXI3:
+AW ID = 3
+AW ID = 7
+
+WDATA for ID 7 could arrive before WDATA for ID 3
+➡️ Slave needs WID to match data to the correct transaction.
+
+In AXI4, this flexibility is removed:
+For each AWID, write data must follow in the exact same order as the AW transaction issued.
+Write data cannot be interleaved on the W channel
+Because ordering is fixed, the slave always knows:
+“The next WDATA belongs to the most recently accepted AW transaction that has outstanding beats.”
+Thus, no need for WID.
+
+Reason 2: Simplifies interconnect and slave design
+Removing WID removes complexity in:
+Routing write data for different IDs
+Reordering buffers
+Merging or scheduling WDATA based on IDs
+Handling interleaved bursts
+This significantly reduces:
+Gate count
+Power
+Verification complexity
+Timing closure effort
+
