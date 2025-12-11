@@ -1,0 +1,26 @@
+Links:
+https://chipedge.com/resources/lint-in-vlsi-design-and-its-importance-in-rtl-design/#:~:text=Lint%20in%20VLSI%20design%20is,or%20waiver%20by%20design%20engineers
+
+
+
+
+
+
+
+ChatGPT: https://chatgpt.com/c/693a4667-0d84-8328-a321-92968af20329
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+This is done before simulation once the RTL design is ready.
+The main objective of doing linting is to come up with a clean RTL before proceeding into the lengthy back end stages in the ASIC Design Cycle.
+One important point about linting is that it checks the cleanness and portability of the HDL code for various EDA tools and not anything related to the actual functionality of the design.
+
+
+
+Common problems:
+Are there any unintentional Latches?
+Are there any set/reset conflicts?
+Are there any Out of Range indexing?
+Are there any combinational loops in the design?.
+Are there any multi driven ports/nets in the design?.
+Are there any non-synthesizable blocks in the design?
+Are there any undriven nets in the design?
+Are there any asynchronous resets in the design?
