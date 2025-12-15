@@ -1,0 +1,148 @@
+I mean, why do we have a coherent interconnect and another is non coherent interconnect in an SoC? 
+We have both coherent and non-coherent interconnects because:
+Only some agents cache data and need coherence, while many agents don’t — and enforcing coherence everywhere is extremely expensive and unnecessary.
+
+First: what coherence actually means
+A coherent interconnect guarantees:
+All cached copies of a memory location are kept consistent
+If one master writes, others see the updated value
+Cache maintenance (snoop, invalidate, update) is handled by hardware
+This is needed only when multiple agents cache shared memory.
+
+1️⃣ Coherent interconnect (CHI / ACE / CCI)
+Who connects here?
+CPUs
+Sometimes GPU / NPU / DSP (if they cache system memory)
+Why they need it
+CPUs have private caches
+Multiple cores access the same memory
+Without coherence → stale data bugs
+Example:
+core0: X = 10;
+core1: print(X);   // must see 10
+If core1’s cache is not snooped → ❌ wrong value.
+What the interconnect must do
+Snoop caches
+Track ownership (MESI/MOESI)
+Handle:
+Invalidates
+Writebacks
+Exclusive ownership
+
+6️⃣ Interview-quality explanation (you can say this verbatim)
+
+CPUs have private caches to improve performance.
+When multiple cores access the same memory location, each core may keep its own cached copy.
+Without hardware cache coherence, a write by one core updates only its local cache, while other cores continue reading stale data from their own caches.
+A coherent interconnect tracks which caches hold a cache line and issues snoop invalidations or updates on writes, ensuring all cores observe a consistent view of memory.
+
+👉 Complex, high power, high area
+
+So, in short coherent interconnect is required to maintain coherency between multiple caches in core/cluster and L3 cache present in interconnect ?
+Yes — that statement is mostly correct, but for an interview you should phrase it a bit more precisely.
+Let me tighten it so it’s technically accurate and interviewer-safe.
+Corrected short answer (what to say)
+A coherent interconnect is required to maintain cache coherency among multiple private caches in cores or clusters, and optionally a shared last-level cache (like L3/system cache), so that all agents observe a consistent view of memory.
+
+****** The real architectural goal of coherent interconnect ******
+The coherent interconnect ensures:
+Private caches stay consistent with each other
+Private caches stay consistent with shared caches (L3/system cache)
+All caches stay consistent with main memory
+Two common SoC cases (important!)
+🔹 Case 1: No L3 cache
+Core0 L1/L2   Core1 L1/L2
+      |            |
+      +------------+
+           |
+   Coherent Interconnect
+        (Directory)
+           |
+         DRAM
+👉 Coherent interconnect still required, even with no L3.
+
+
+🔹 Case 2: With L3 / System Cache
+Core0 L1/L2   Core1 L1/L2
+      |            |
+      +------------+
+           |
+     Coherent Interconnect
+      + System/L3 Cache
+           |
+         DRAM
+👉 L3 is:
+Another coherent agent
+Often physically close to the interconnect
+Still controlled by coherence protocol
+
+Key interviewer insight (very important)
+The coherent interconnect does not exist because of L3.
+L3 exists because the coherent interconnect already manages coherence.
+This is a strong architectural statement.
+What exactly the interconnect maintains coherence between ?
+| Component       | Coherent? | Why                   |
+| --------------- | --------- | --------------------- |
+| Core L1/L2      | ✅ Yes     | Private caches        |
+| Cluster L2      | ✅ Yes     | Shared within cluster |
+| L3/System Cache | ✅ Yes     | Last-level cache      |
+| DRAM            | Implicit  | Backing store         |
+| UART / GPIO     | ❌ No      | No caching            |
+
+Interview-grade one-liner 🔥
+A coherent interconnect maintains consistency across all cache agents in the system—private core caches, shared cluster caches, and optional system/L3 caches—ensuring a single coherent memory view.
+
+If interviewer pushes further
+
+Q: Is L3 mandatory for coherence?
+A: No. Coherence is required whenever multiple caching agents exist, regardless of whether an L3 cache is present.
+
+Q: Can L3 exist without coherence?
+A: No. A shared cache must participate in the coherence protocol.
+
+7️⃣ 30-second interview answer 🔥
+
+ARM CCN and CMN are coherent interconnect IPs that connect CPU clusters, caches, memory controllers, and coherent I/O.
+CCN uses a simpler topology suitable for smaller core counts, while CMN uses a scalable mesh with distributed directories and L3 cache slices, enabling hardware cache coherence to scale to tens or hundreds of cores efficiently.
+
+Q. “Non-coherent interconnects are slower” ❌
+Why this is wrong
+Non-coherent paths can be faster
+No snoops, no ordering overhead
+
+2️⃣ Non-coherent interconnect (AXI / AHB / APB)
+Who connects here?
+DMA engines
+Peripherals
+Simple accelerators
+Register-mapped blocks
+Why they don’t need coherence
+Most do not cache
+Or access memory in a producer–consumer manner
+
+Example:
+DMA writes buffer
+CPU invalidates cache
+CPU reads buffer
+No hardware coherence required.
+
+****************Why not make everything coherent?
+This is the key architectural tradeoff.
+❌ Coherence everywhere = bad idea
+Costs of coherence:
+Snoop traffic explodes
+Larger interconnect
+Higher latency
+More power
+Harder timing closure
+More verification complexity
+
+For:
+UART registers ❓
+GPIO ❓
+Timers ❓
+→ Zero benefit
+
+One-liner interview answer 🔥
+
+SoCs use both coherent and non-coherent interconnects because only cache-based masters need hardware cache coherence; enforcing coherence for non-caching peripherals would add huge power, area, and complexity with no benefit.
