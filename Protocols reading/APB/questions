@@ -106,3 +106,35 @@ If Slave changes, PSEL can immediately go HIGH for that peripheral after Access 
 | T1    | 1     | 0     | 1       | Access for Slave1                  |
 | T2    | 0     | 1     | 0       | Setup for Slave2 → safe transition |
 | T3    | 0     | 1     | 1       | Access for Slave2                  |
+
+if there are multiple continuous transfers in APB, PSEL needs to be made high. right ?
+Yes — PSEL must be HIGH for every APB transfer.
+But here’s the precise, interview-correct nuance 👇
+
+Case 1️⃣: Multiple continuous transfers to the same slave ✅
+
+PSEL can remain HIGH continuously
+
+PENABLE is toggled LOW → HIGH for each transfer
+
+Timeline example
+Cycle:     1      2      3      4      5      6
+PSEL:      1      1      1      1      1      1
+PENABLE:   0      1      0      1      0      1
+Transfer:  setup  acc   setup  acc   setup  acc
+
+✔ Valid
+✔ Common in real designs
+✔ Efficient
+
+Case 2️⃣: Transfers to different slaves ❌
+Current PSELx must go LOW
+Next slave’s PSELy goes HIGH
+Only one PSEL asserted at a time
+
+Case 3️⃣: Single isolated transfers
+PSEL goes HIGH for setup
+Goes LOW after access
+Key interview line ⭐
+
+“For continuous APB transfers to the same slave, PSEL may remain asserted, while PENABLE toggles to indicate each access.”
