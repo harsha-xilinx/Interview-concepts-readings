@@ -1,0 +1,106 @@
+What is Integrated Clock Gating (ICG)?
+Integrated Clock Gating is a power-saving technique used in digital ICs where the clock to a block is turned OFF when the block is idle.
+Instead of manually coding clock-gating logic with AND/OR gates, a dedicated standard-cell called an ICG cell is used.
+
+Integrated Clock Gating is a power optimization technique — not a CDC solution — but careless use can introduce CDC problems.
+
+Why use an ICG cell?
+A raw gate on a clock can cause glitches and timing issues.
+
+An ICG cell includes:
+A level-sensitive latch (usually negative-level)
+A clock gate (AND / OR)
+Optional scan enable
+This ensures the enable signal is sampled safely when the clock is LOW, preventing glitches.
+
+Why Integrated Clock Gating is important
+🔋 Reduces dynamic power (clock toggles consume a lot of power)
+🧠 Safe clock gating (glitch-free)
+🧪 DFT-friendly (scan enable support)
+🛠️ Preferred by synthesis & PnR tools
+
+Example (RTL intent – synthesis inserts ICG)
+always @(posedge clk)
+  if (en)
+    q <= d;
+👉 Synthesis may infer an ICG cell automatically.
+
+Is Integrated Clock Gating related to CDC?
+🚫 Directly? NO
+ICG is not a CDC technique.
+| Aspect                | ICG             | CDC                          |
+| --------------------- | --------------- | ---------------------------- |
+| Purpose               | Power reduction | Safe clock-domain crossing   |
+| Deals with            | Clock enabling  | Data transfer between clocks |
+| Handles metastability | ❌ No            | ✅ Yes                        |
+
+Q1: Is a gated clock considered a new clock domain?
+✔️ Yes, for STA and CDC tools.
+
+Q2: Can clock gating cause CDC violations?
+✔️ Yes, indirectly.
+
+Q3: Should you gate clocks in RTL manually?
+❌ No — let synthesis insert ICG.
+
+Q4: What happens if enable toggles when clock is HIGH?
+✔️ ICG latch prevents glitches.
+
+
+
+Question:
+1️⃣ “Clock gating is just ANDing clock with enable”
+❌ Trap answer:
+Yes, gated_clk = clk & enable.
+✅ Correct:
+Never gate clocks with logic gates.
+This causes glitches, race conditions, and STA violations.
+✔️ Always use ICG (Integrated Clock Gating) cells with a latch.
+
+
+4️⃣ “Enable can come from any clock domain”
+❌ Trap answer:
+Enable is just control, not data.
+✅ Correct:
+If enable comes from another clock domain →
+⚠️ Metastability inside the ICG latch.
+✔️ Enable must be synchronized into the source clock domain.
+
+8️⃣ “Clock gating has no impact on timing”
+❌ Trap answer:
+It only affects power.
+✅ Correct:
+Clock gating:
+Adds clock latency
+Adds clock uncertainty
+Can create skew imbalance
+✔️ STA must analyze gated clocks separately.
+
+Q: Can clock gating cause hold violations?
+✔️ Yes (due to skew changes)
+
+Q. Clock gating saves power everywhere ?
+Clock gating does NOT save power everywhere.
+It saves power only when the gated block is large and idle long enough
+P = α · C · V² · f
+
+❌ When clock gating is NOT beneficial
+1️⃣ Small logic blocks
+
+Few flops
+Small clock tree
+➡️ ICG overhead > saved power
+
+Q, 6️⃣ “Clock gating is better than clock enable” ?
+Clock gating is not “better” than clock enable — it is more powerful but riskier.
+🧠 Final Golden Summary
+Use clock enable by default. Use clock gating only when power savings clearly justify the added clocking complexity.
+
+Q: Why not always use clock gating instead of CE?
+✔️ Because clock gating increases CDC, STA, reset, and verification complexity.
+
+Q: Can clock enable achieve same power as clock gating?
+✔️ No — clock tree still toggles.
+
+Q: Why do many CPUs prefer CE inside pipeline stages?
+✔️ Simpler timing + fewer CDC issues.
