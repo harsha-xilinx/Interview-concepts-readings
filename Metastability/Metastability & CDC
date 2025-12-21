@@ -1,4 +1,8 @@
 Read this: https://www.asic-world.com/tidbits/metastablity.html
+https://www.edn.com/synchronizer-techniques-for-multi-clock-domain-socs-fpgas/
+https://www.youtube.com/playlist?list=PLdcY8Cf-O1Zon-8c9NDhgY2F8r_O7oeC4
+Must read: STA/CDC spiral notebook notes: Explained all CDC techniqus in details.
+
 IQ -> Means -> Interview Questions
 
 -------------------------------------------------
@@ -84,7 +88,21 @@ No — each domain needs its own 2-FF chain.
 but it doesn’t guarantee that the value sampled is the same as the current asynchronous input — especially if it toggles faster than the destination clock.
 For guaranteed capture, we’d need handshake or pulse-stretching mechanisms.”
 
+8️⃣ What happens if the async input is a pulse?
+Answer:
+The pulse may be:
+Missed completely
+Stretched
+Captured incorrectly
 
+✔️ Solutions:
+Pulse stretcher
+Toggle-based synchronizer
+Handshake
+
+IQ: A faster destination clock generally worsens metastability (reduces MTBF).
+
+Your reasoning is correct.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 B. Handshake (req/ack)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -159,11 +177,123 @@ IQ. What is the typical latency of one handshake?
 IQ. Why must both REQ and ACK be level-signals, not pulses?
 Because pulse width can be missed in async domains; levels are persistent until acknowledged.
 
------FOR THIS METHODOLOGY DO MORE QUESTIONS FROM CHATGPT
+✔ Data is not synchronized
+✔ Only REQ/ACK are synchronized
+✔ Data is sampled only when stable
 
+-----FOR THIS METHODOLOGY DO MORE QUESTIONS FROM CHATGPT
+2️⃣ Which signals are synchronized in a REQ–ACK scheme?
+Expected answer
+Only REQ and ACK
+Data is not synchronized
+Data is captured only when handshake is valid.
+
+3️⃣ How many flip-flops are used?
+Expected answer
+2 FFs for REQ sync (dest clock)
+2 FFs for ACK sync (source clock)
+1 FF for REQ
+1 FF for ACK
+➡️ Total = 6 control FFs (+ data regs)
+
+4️⃣ Where does metastability occur?
+Only in the first FF of REQ sync
+Only in the first FF of ACK sync
+Never in data path
+
+6️⃣ Why can’t we synchronize data bits directly?
+Each bit may settle differently
+Leads to data corruption
+Handshake guarantees atomic transfer
+
+7️⃣ What happens if ACK arrives before REQ deasserts?
+This is expected behavior
+Source must wait for ACK before clearing REQ
+Prevents lost transfers
+
+IQ: Draw the state machine for REQ-ACK based synchronizer.
+          +--------------------+
+          |                    |
+          |        IDLE        |
+          |   REQ=0, ACK=0    |
+          +---------+----------+
+                    |
+               start_transfer
+                    |
+                    v
+          +--------------------+
+          |                    |
+          |   REQ_ASSERTED     |
+          |     REQ=1          |
+          +---------+----------+
+                    |
+              ACK_sync == 1
+                    |
+                    v
+          +--------------------+
+          |                    |
+          |   WAIT_ACK_LOW     |
+          |     REQ=0          |
+          +---------+----------+
+                    |
+              ACK_sync == 0
+                    |
+                    v
+                 (IDLE)
+States
+IDLE - no transfer
+REQ_ASSERTED – request sent
+WAIT_ACK_LOW – waiting for ACK deassert
+
+IQ.  Why wait for REQ deassert?
+Prevents double sampling
+Guarantees exactly-once transfer
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 C . Toggle / pulse synchronizer   -  NOT READ IN DETAILS
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Note: Pulse synchronizers are of 2 types:
+1. Level Based
+2. Toggle based
+
+2	. Toggle based Synchronizer:
+Read from STA/CDC spiral notebook
+
+IQ:Why do we use a toggle instead of directly synchronizing a pulse?
+Trap intent: Pulse width misconception
+Expected answer:
+A pulse can be shorter than the destination clock period and get missed
+Toggle converts event → level change
+Level change is guaranteed to be captured eventually
+
+2️⃣ Why is an XOR used instead of AND/OR to generate the pulse?
+Expected thinking:
+XOR detects any transition
+AND/OR depend on absolute values
+XOR gives pulse on both rising and falling edges
+✔️ Correct: pulse = curr ^ prev
+
+3️⃣ What happens if two source pulses occur before the destination clock samples the toggle?
+Very common trap
+Answer:
+Toggle flips twice
+Destination sees no net change
+❗ Event is lost
+👉 Toggle synchronizers are not event counters
+
+4️⃣ Can a toggle synchronizer guarantee delivery of every pulse?
+Answer: ❌ No
+Explanation:
+It guarantees detection of a change, not every event
+For multiple events → need:
+Gray counter synchronizer
+FIFO
+
+6️⃣ Is metastability still possible in a toggle synchronizer?
+Expected answer:
+Yes, but contained
+First FF can go metastable
+Second FF reduces probability
+XOR only sees clean, registered signals
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 D. Asynchronous FIFO
@@ -172,7 +302,7 @@ Most powerful and advanced CDC technique
 This is the go-to method when you need to transfer multi-bit data streams between independent clock domains — safely, continuously, and without metastability corrupting the data.
 So far we’ve covered:
 	•	✅ 2-FF synchronizer → transfers stable 1-bit levels (may miss pulses).
-	•	✅ Handshake (REQ/ACK) → transfers 1-bit events reliably (but slow).
+	•	✅ Handshake (REQ/ACK) → transfers 1-bit events reliably (but slow) (can be used to transfer multi bit data).
 	•	✅ Toggle synchronizer → transfers short pulses/events (still 1-bit).
 
 But what if we need to:
@@ -202,9 +332,9 @@ It uses:
  │       │ Write Addr │────►│               │◄──────│ Read Addr  │     │
  │       └────────────┘     │               │       └────────────┘     │
  │       │ Write Ptr Gray│◄─┼──sync──┐   ┌──┼─►│ Read Ptr Gray│        │
- │                          │   (2-FF)│   │(2-FF)                  │
- │                          │          │   │                       │
- │        FIFO Memory        │◄────────┼───┼────────►               │
+ │                          │   (2-FF)│     │(2-FF)                    │
+ │                          │          │    │                          │
+ │        FIFO Memory        │◄────────┼────┼────────►                 │
  │     (Dual-Port RAM)       │          │   │                       │
  │                          │          │   │                       │
  │ full/empty flags generated│          │   │                       │
@@ -244,3 +374,11 @@ Two total: one for sending write pointer to read domain, one for sending read po
 IQ. What can go wrong if you use binary counters for pointers instead of Gray code?
 Multiple bits toggle → receiver can read incorrect intermediate values → false full/empty flags → data corruption.
 
+
++++++++++++++++++++ General CDC Question ++++++++++++++++++++++++++++++++++++++++++
+🔥 2️⃣ Why is a pulse dangerous in CDC, but a level is safer?
+Expected Answer
+Pulse may be missed if destination clock doesn’t sample it
+Level remains asserted long enough to be synchronized
+Golden Line
+“A pulse is an event; a level is a state. Events are hard to synchronize.”
