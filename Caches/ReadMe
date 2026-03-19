@@ -1,0 +1,348 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                         CACHE
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🎯 Types of Misses (very important for interviews)
+1️⃣ Compulsory Miss
+
+First time access
+
+Cannot avoid
+
+2️⃣ Capacity Miss
+
+Cache too small
+
+3️⃣ Conflict Miss
+
+Two addresses map to same location
+
+🧠 One subtle but VERY important detail
+👉 Cache works in cache-line granularity, NOT variable granularity
+So:
+Coherency
+Flush
+Invalidate
+👉 All happen at cache line level, not variable level
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🚀 Topic 2: Write Policies
+When CPU writes data, what should happen?
+👉 Two main approaches:
+⚙️ 1. Write-Through
+🧠 Definition
+👉 Every write goes to:
+Cache ✅
+Memory ✅ (immediately)
+👉 Steps:
+Update cache
+Immediately update memory
+📦 Visualization
+Cache → Memory (instant sync)
+✅ Pros
+Memory always up-to-date
+Simpler design
+Easier for coherency
+
+❌ Cons
+Slow (every write hits memory)
+High memory bandwidth usage
+
+⚙️ 2. Write-Back (IMPORTANT 🔥)
+🧠 Definition
+👉 Write goes to cache only
+👉 Memory updated later
+
+👉 Steps:
+Update cache
+Mark line as Dirty
+DO NOT update memory yet
+
+💡 When is memory updated?
+👉 Only when:
+Cache line is evicted
+OR explicitly flushed
+
+🧩 This is where "Dirty" comes from
+🔴 Dirty Line
+Cache ≠ Memory
+Must write back before eviction
+
+🟢 Clean Line
+Cache = Memory
+Safe to discard, why ? Because, data here is already updated in Man Memory
+
+⚙️ 2. Eviction (very important)
+👉 Eviction = removing a cache line to make space
+Because:
+Cache is small, New data needs space
+
+🔴 Important case
+If evicted line is CLEAN
+👉 Just throw it away, because this data is already updated in main memory
+
+If evicted line is DIRTY:
+👉 You CANNOT throw it away ❌
+👉 You must:
+Write it to memory, Then remove it
+👉 This write = write-back
+
+⚙️ 3. Flush (this is different from eviction)
+👉 Flush = manually force writing dirty data to memory, Even if cache is NOT full
+
+📦 Example
+CPU writes: X = 20;
+Cache = 20 (dirty)
+Memory = 10
+Now you call:
+flush(X);
+👉 This forces: Memory becomes 20
+👉 Cache may still keep the data
+
+| Feature           | Eviction                     | Flush            |
+| ----------------- | ---------------------------- | ---------------- |
+| Trigger           | Only when Cache full         | Software/manual  |
+| Purpose           | Make space                   | Sync memory      |
+| Happens when      | Replacement needed           | Explicit request |
+| Writes to memory? | Only if dirty                | Always if dirty  |
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Scenario: Write-back cache
+Step 1:
+X = 10; Cache = 10
+Memory = 0
+Line = DIRTY
+
+Step 2: Access other data → cache fills up  (Tryinf to access other data, so we need more space in cache)
+Now cache needs space
+
+Step 3: Eviction happens
+👉 If X is selected:
+Since it's DIRTY:
+Write 10 → memory
+Then remove from cache
+
+⚠️ Key Insight
+👉 Memory is updated only when needed, not immediately
+That’s the whole idea of write-back.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔁 One more clean example
+Without flush
+CPU writes X = 50 → cache only
+Program ends
+👉 Memory may still have old value
+
+With flush
+CPU writes X = 50
+flush(X)
+👉 Memory is now correct
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Q: What happens when a dirty cache line is evicted?
+When a dirty cache line is evicted, the cache controller first writes the modified data back to main memory (write-back), and then the cache line is replaced
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+⚙️ Quick teaser (so you’re not confused)
+🔹 Valid bit
+Each cache line has a valid bit
+👉 Tells:
+“Does this line contain useful data?”
+
+🔹 Invalid line
+Either:
+Never used
+Or explicitly invalidated
+👉 Access → always miss
+
+🔹 Invalidate operation
+👉 Force a cache line to become invalid
+Used when:
+Data became stale (DMA, other core, etc.)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🧠 First: What is a Write Miss?
+
+👉 CPU tries to write to an address
+👉 That address is NOT in cache
+Example:
+X = 10;  👉 But X is not in cache → write miss
+⚙️ Now two possible behaviors
+1️⃣ Write Allocate (Fetch on Write)
+🧠 Definition
+👉 On a write miss:
+Bring the entire cache line into cache
+Then perform the write
+🔄 Flow
+Write miss
+Fetch 64B cache line from memory
+Store in cache (valid = 1)
+Update the value
+Mark dirty (if write-back)
+
+2️⃣ No Write Allocate (Write Around)
+🧠 Definition
+👉 On a write miss:
+DO NOT bring data into cache
+Write directly to memory
+🔄 Flow
+Write miss
+Directly update memory
+Cache remains unchanged (line stays invalid)
+🧩 What “remains INVALID” actually means
+👉 It does NOT mean we actively mark something invalid
+👉 It means:
+“We simply do nothing — the cache does not get a valid entry for that address.”
+
+What happens?
+Cache lookup → MISS
+Policy = No Write Allocate
+Write goes directly to memory
+Cache is untouched
+
+🎯 Better way to think
+Write Allocate:
+👉 “Let me create a cache entry for this address”
+→ Valid = 1
+No Write Allocate:
+👉 “Not worth caching this”
+→ No entry created
+→ Cache stays as-is
+
+| Feature        | Write Allocate  | No Write Allocate |
+| -------------- | --------------- | ----------------- |
+| On write miss  | Load into cache | Don’t load        |
+| Cache updated? | Yes             | No                |
+| Memory access  | After load      | Immediate         |
+| Best for       | Reuse           | One-time writes   |
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔥 IMPORTANT COMBINATIONS (VERY ASKED)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🟢 Write-Back + Write Allocate (MOST COMMON)
+👉 Flow:
+Miss → load into cache
+Write → mark dirty
+✔ Used in modern CPUs
+🔴 Write-Through + No Write Allocate
+👉 Flow:
+Miss → write directly to memory
+No cache usage
+✔ Used in simpler systems / streaming
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Topic 4: Valid / Invalid + Invalidate (Deep Dive)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🧠 1. What is the VALID bit?
+👉 Every cache line has a valid bit (1 bit)
+It answers one simple question:
+❓ “Does this cache line contain meaningful data?”
+
+🔹 Valid = 1
+Cache line has useful data
+Can be used for read/write
+
+🔹 Valid = 0 (Invalid)
+Cache line has no usable data
+Must NOT be used
+
+⚙️ Where is this used?
+👉 During every cache access:
+CPU requests address X
+Find cache line (using index)
+Check:
+Valid bit?
+Tag match?
+
+✅ HIT condition
+👉 Only if:
+Valid = 1
+Tag matches
+
+❌ MISS condition
+👉 If:
+Valid = 0  OR  Tag mismatch
+
+🔥 Important Insight
+👉 Even if tag matches, but valid = 0 → still MISS
+
+🧠 2. When does a line become VALID?
+👉 Whenever we load data into cache
+Examples:
+Read miss → fetch from memory → Valid = 1
+Write allocate → bring line → Valid = 1
+
+🧠 3. When does a line become INVALID?
+Two cases:
+🔹 Case 1: Initial state
+Cache starts empty
+All lines = Invalid
+
+🔹 Case 2: Explicit Invalidate (IMPORTANT 🔥)
+👉 Software or hardware forces line to become invalid
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+INVALIDATE Operation
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🚀 4. What is “Invalidate” operation?
+👉 Invalidate =
+❌ “This data is no longer trustworthy → discard it”
+
+🔄 What happens internally?
+Valid bit → set to 0
+Data is ignored (not physically erased necessarily)
+
+🔥 Why do we need Invalidate?
+This is the core of software coherency
+
+🎯 Scenario: DMA → CPU
+CPU cached X = 10
+DMA updates memory → X = 50
+
+👉 Problem:
+Cache still has old value (10)  
+✅ Solution:
+👉 Software does:
+invalidate(X);
+👉 Now:
+Cache line removed
+Next read → fetch from memory (50)
+
+⚠️ If you DON’T invalidate
+👉 CPU keeps reading stale value 💀
+
+| Feature           | Invalidate           | Eviction      |
+| ----------------- | -------------------- | ------------- |
+| Trigger           | Software / coherency | Cache full    |
+| Purpose           | Remove stale data    | Make space    |
+| Writes to memory? | ❌ No                | ✅ If dirty  |
+| Valid bit         | Set to 0             | Line replaced |
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🧪 Your Question
+Scenario:
+Cache has X = 20 (clean)
+DMA updates memory → X = 50
+👉 What should CPU do before reading?
+✅ Correct Answer
+👉 Invalidate the cache line for X before reading
+🧠 Why?
+Cache still has old value (20)
+Memory now has updated value (50)
+👉 If you don’t invalidate:
+CPU will read stale data (20) ❌
+
+🔄 Correct Flow
+DMA writes → memory = 50
+CPU does:
+invalidate(X);
+CPU reads:
+X → fetched from memory (50) ✅
+
+🎯🎯🎯🎯🎯 (VVI) Key Insight
+👉 Since cache line was clean:
+No need to flush
+Just invalidate is enough
+
+⚠️ Important Contrast
+If it was:
+Cache: X = 20 (DIRTY)
+Memory: X = 10
+
+👉 Then:
+You must flush first, NOT invalidate directly
+Otherwise → data loss 💀
+
+🧠 Rule to remember (VERY IMPORTANT)
+👉 If cache has latest data → FLUSH
+👉 If memory has latest data → INVALIDATE
