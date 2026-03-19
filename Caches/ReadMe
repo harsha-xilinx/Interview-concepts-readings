@@ -279,6 +279,10 @@ INVALIDATE Operation
 👉 Invalidate =
 ❌ “This data is no longer trustworthy → discard it”
 
+🧠 Definition
+👉 Mark cache line as INVALID
+👉 Do NOT write to memory
+
 🔄 What happens internally?
 Valid bit → set to 0
 Data is ignored (not physically erased necessarily)
@@ -342,7 +346,76 @@ Memory: X = 10
 👉 Then:
 You must flush first, NOT invalidate directly
 Otherwise → data loss 💀
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+⚙️ 1. Clean (Write-back)
+🧠 Definition
+👉 Write dirty data from cache → memory
+👉 Keep the cache line VALID
 
+🔄 What happens?
+If line is dirty:
+Write to memory, Mark as clean
+If already clean:
+Do nothing
 🧠 Rule to remember (VERY IMPORTANT)
 👉 If cache has latest data → FLUSH
 👉 If memory has latest data → INVALIDATE
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+⚙️ 3. Clean + Invalidate (VERY IMPORTANT 🔥)
+🧠 Definition
+👉 Combination of:
+Clean (write-back)
+Invalidate (remove from cache)
+🔄 What happens?
+Dirty → write to memory
+Then → mark invalid
+
+📦 Example
+Before:
+Cache: X = 20 (DIRTY)
+Memory: X = 10
+After Clean+Invalidate:
+Cache: X → INVALID
+Memory: X = 20
+
+🎯 Use case
+👉 When:
+Memory must be correct
+Cache must NOT keep stale copy
+
+Summary or Quick Thought:
+⚙️ 4. Flush (⚠️ ambiguous term)
+👉 Depending on system:
+Case 1 (common in ARM/Linux docs):
+👉 Flush = Clean + Invalidate
+Case 2 (some contexts):
+👉 Flush = Clean only
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🎯🎯🎯 Quick check (final test)
+Scenario:
+CPU writes X = 100 (dirty)
+DMA will read X
+👉 What should you do?
+Answer to above question, will do flush or clean+invalidate
+👉 Best answer:
+Clean (write-back) is sufficient
+
+🔍 Why?
+Scenario:
+CPU has X = 100 (dirty)
+DMA will read from memory
+👉 Problem:
+Memory still has old value
+✅ Required action:
+👉 Clean (write-back)
+Writes 100 → memory
+Cache can still keep the line
+
+🤔 Then why did you say Clean + Invalidate?
+👉 That’s also correct but slightly overkill
+When to use Clean + Invalidate?
+👉 If:
+CPU will NOT use the data again soon
+You want to:
+Avoid stale copies
+Free cache space
