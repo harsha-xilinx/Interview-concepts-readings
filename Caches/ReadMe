@@ -24,7 +24,9 @@ Flush
 Invalidate
 👉 All happen at cache line level, not variable level
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-🚀 Topic 2: Write Policies
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++                           🚀 Topic 2: Write Policies                                   +
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 When CPU writes data, what should happen?
 👉 Two main approaches:
 ⚙️ 1. Write-Through
@@ -35,8 +37,7 @@ Memory ✅ (immediately)
 👉 Steps:
 Update cache
 Immediately update memory
-📦 Visualization
-Cache → Memory (instant sync)
+
 ✅ Pros
 Memory always up-to-date
 Simpler design
@@ -419,3 +420,57 @@ CPU will NOT use the data again soon
 You want to:
 Avoid stale copies
 Free cache space
+
+
+++++++++++++++++++++++++++++++++++++++++++
+Read Allocate
+++++++++++++++++++++++++++++++++++++++++++
+🧠 1. What is Read Allocate?
+👉 Read Allocate = On a read miss, bring the data into cache
+🔹 Definition
+When CPU performs a read and the data is NOT in cache → fetch the entire cache line from memory and store it in cache.
+
+👉 If A[0] is not in cache:
+With Read Allocate:
+Cache miss
+Fetch entire cache line (e.g., 64B) from memory
+Store in cache (Valid = 1)
+Return requested data
+
+🧠 2. Is Read Allocate always used?
+👉 Almost always YES in modern CPUs
+Why?
+Reads benefit heavily from caching
+Reuse is very common
+
+⚠️ Is there “No Read Allocate”?
+👉 Technically possible but:
+Rare in CPUs
+More common in special systems (streaming, GPUs)
+
+🧩 3. Step-by-Step Hardware Flow (IMPORTANT)
+CPU issues READ
+Address = [ Tag | Index | Offset ]
+Step 1: Cache lookup
+Index → select set
+Tag compare
+
+👉 MISS ❌
+
+Step 2: Allocate (this is the key step)
+
+👉 Cache controller:
+
+Chooses a line (victim)
+May evict existing line
+Step 3: Fetch from memory
+
+👉 Request:
+
+Aligned address (cache-line aligned)
+Step 4: Fill cache
+Data stored in data array
+Tag stored in tag array
+Valid = 1
+Step 5: Return data to CPU
+
