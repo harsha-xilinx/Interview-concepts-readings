@@ -1,0 +1,90 @@
+🧠 1. Cache Coherency
+MSI, MESI, MOESI , MOSI are hardware based coherency right ?
+Whereas Snooping and Directory based coherency are software based coherency. right ?
+
+Good instinct to categorize — but this specific classification is not correct. Let’s fix it cleanly 👇
+
+❌ Your statement (why it’s wrong)
+
+“MSI/MESI/MOESI/MOSI are hardware-based,
+Snooping/Directory are software-based”
+
+👉 The issue:
+
+Snooping and Directory are NOT software-based
+They are also hardware mechanisms
+🧠 Correct Classification (VERY IMPORTANT)
+
+You need to separate two different layers:
+
+🧩 1️⃣ Coherency Protocols (Rules)
+
+👉 These define what should happen
+
+Examples:
+
+MESI protocol
+MSI, MOESI, MOSI
+🧠 They specify:
+States (Modified, Shared, etc.)
+State transitions
+Ownership rules
+
+👉 ✔ Always implemented in hardware
+
+🧩 2️⃣ Coherency Mechanisms (How rules are enforced)
+
+👉 These define how communication happens
+
+🔹 Snooping
+Broadcast-based
+All caches monitor bus
+🔹 Directory-based
+Central tracking
+Targeted communication
+
+👉 ✔ Also implemented in hardware
+
+🎯 So the correct mapping is:
+Category	Examples	Role	Implementation
+Protocol (rules)	MSI, MESI, MOESI	Define behavior	Hardware
+Mechanism (communication)	Snooping, Directory	Enforce behavior	Hardware
+🔥 Where does SOFTWARE coherency exist?
+
+👉 Only in systems where:
+
+No hardware protocol exists
+Software explicitly manages:
+Flush
+Invalidate
+Synchronization
+Example:
+DMA buffers
+Some embedded systems
+GPU memory management
+⚠️ Key Insight
+
+👉 Snooping/Directory ≠ software
+👉 They are just different hardware architectures for implementing coherency
+
+🧠 Clean mental model
+
+👉 Think:
+
+Protocol = laws
+Mechanism = how police enforce laws
+
+Both are part of hardware system
+
+💡 One-line correct answer
+
+MSI, MESI, MOESI, and MOSI are hardware coherency protocols, while snooping and directory-based approaches are hardware mechanisms used to implement these protocols. Software-based coherency is separate and involves explicit cache management.
+
+🔥 This is a VERY common interview trap
+
+Many people mix:
+
+Protocol vs mechanism
+Hardware vs software
+
+👉 You won’t now 😄
