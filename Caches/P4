@@ -1,0 +1,104 @@
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                            🚀 Topic: Coherency Protocols (Deep Dive)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🧠 1. What is a Coherency Protocol?
+👉 A coherency protocol defines:
+Rules that ensure all caches see a consistent view of memory
+
+🧠 2. Basic Building Blocks
+🔹 A. States
+Each cache line can be in states like:
+| State         | Meaning                  |
+| ------------- | ------------------------ |
+| Modified (M)  | Only copy, dirty         |
+| Shared (S)    | Multiple copies, clean   |
+| Invalid (I)   | Not valid                |
+| Exclusive (E) | Only copy, clean         |
+| Owned (O)     | Dirty but shared (MOESI) |
+
+Suppose there are three processors, each having cache. Suppose the following scenario:-
+
+Processor 1 read X : obtains 24 from the memory and caches it.
+Processor 2 read X : obtains 24 from memory and caches it.
+Again, processor 1 writes as X : 64, Its locally cached copy is updated. Now, processor 3 reads X, what value should it get?
+Memory and processor 2 thinks it is 24 and processor 1 thinks it is 64.
+As multiple processors operate in parallel, and independently multiple caches may possess different copies of the same memory block, this creates a cache coherence problem. Cache coherence is the discipline that ensures that changes in the values of shared operands are propagated throughout the system in a timely fashion. There are three distinct level of cache coherence :-
+
+Every write operation appears to occur instantaneously.
+All processors see exactly the same sequence of changes of values for each separate operand.
+Different processors may see an operation and assume different sequences of values; this is known as non-coherent behavior.
+
+There are various Cache Coherence Protocols in multiprocessor system. These are :-
+
+MSI protocol (Modified, Shared, Invalid)
+MOSI protocol (Modified, Owned, Shared, Invalid)
+MESI protocol (Modified, Exclusive, Shared, Invalid)
+MOESI protocol (Modified, Owned, Exclusive, Shared, Invalid)
+These important terms are discussed as follows:
+
+Modified - 
+A cache line in this state holds the most recent, correct copy of the data while the copy in the main memory is incorrect and no other processor holds a copy.
+Owned - 
+A cache line in this state holds the most recent, correct copy of the data. It is similar to shared state in that other processors can hold a copy of most recent, correct data and unlike shared state however, copy in main memory can be incorrect. Only one processor can hold the data in owned state while all other processors must hold the data in shared state.
+Exclusive - 
+A cache line in this state holds the most recent, correct copy of the data. The main memory copy is also most recent, correct copy of data while no other holds a copy of data.
+Shared - 
+A cache line in this state holds the most recent, correct copy of the data. Other processors in system may hold copies of data in shared state as well. The main memory copy is also the most recent, correct copy of the data, if no other processor holds it in owned state.
+Invalid - 
+A cache line in this state does not hold a valid copy of data. Valid copies of data can be either in main memory or another processor cache.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                 🚀 Topic:Coherency Mechanisms
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔹 Snooping
+Broadcast-based
+All caches monitor bus
+🔹 Directory-based
+Central tracking
+Targeted communication
+
+🚀 1. Snooping Mechanism (Deep Dive)
+🧠 Core Idea
+👉 All caches listen to a shared communication medium (bus/interconnect)
+
+🔥 Think like this:
+“Every cache hears everything”
+
+⚙️ How it works (step-by-step)
+Scenario: Core 1 writes X
+Step 1: Core 1 issues request
+BusRdX (Read for ownership)
+Address = X
+Step 2: Broadcast
+👉 This goes to:
+All other caches
+Step 3: All caches snoop (monitor)
+Each cache checks:
+Do I have X
+Step 4: Reaction
+If yes:
+Invalidate OR
+Provide data
+Step 5: Core 1 gets ownership
+👉 Moves to Modified (M)
+🧠 Hardware View
+Each cache has:
+Snoop logic
+Tag lookup on snoop requests
+
+
+⚠️ Limitation of Snooping
+❌ Problem: Broadcast traffic
+👉 Every request:
+Sent to ALL cores
+❌ Problem: Scalability
+👉 Works well for:
+2–8 cores
+👉 Breaks for:
+32+ cores
+| Feature       | Value     |
+| ------------- | --------- |
+| Communication | Broadcast |
+| Latency       | Low       |
+| Complexity    | Simple    |
+| Scalability   | Poor      |
