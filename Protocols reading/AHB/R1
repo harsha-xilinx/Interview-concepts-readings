@@ -1,3 +1,57 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                                                                     AHB
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+🔹 2. Where does AHB fit?
+AHB = Advanced High-performance Bus
+Think of AMBA like a hierarchy:
+
+Bus Type	Purpose
+APB	Low-speed peripherals (UART, GPIO)
+AHB	High-speed system bus
+AXI	Modern high-performance interconnect
+
+So AHB was designed for:
+CPU ↔ memory
+DMA ↔ memory
+High bandwidth transfers
+
+🔄 2. Support multiple masters
+CPU
+DMA
+Debug unit
+AHB introduced:
+Arbitration
+Shared bus access
+
+🧠 4. Simpler than modern protocols
+Compared to AXI:
+Less complexity
+Easier to implement
+Lower area/power
+
+🔹 4. Why NOT AXI (at that time)?
+👉 AXI didn’t exist yet
+AHB came first. Later, ARM introduced AXI when requirements evolved.
+
+
+🔹 5. Then why AXI replaced AHB?
+As systems got more complex:
+🚫 Limitations of AHB
+Single shared bus → contention
+No true parallel transactions
+Blocking nature (one transfer at a time)
+Not scalable for many masters
+
+
+✅ AXI improvements
+Multiple independent channels (read/write)
+Out-of-order transactions
+Multiple outstanding requests
+Better for multicore + high bandwidth
+👉 That’s why AXI dominates modern SoCs.
+
+🔹 6. Where AHB is still used today
+Even now, AHB is not dead:
+Mid-level interconnects
+Simpler SoCs
+Microcontroller-class designs
