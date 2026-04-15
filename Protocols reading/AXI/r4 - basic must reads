@@ -1,0 +1,11 @@
+VALID signals must be LOW during ARESETn is LOW (which means valid signals must below when reset is enabled)
+
+A txn must not cross a 4kb address boundary. Explain this statement in details.
+A transaction = one address phase + entire burst
+So for a read/write:
+Start address = AxADDR
+Length = AxLEN
+Size = AxSIZE,   👉 Entire burst = multiple data beats
+
+Strobe and Types of BURST relation in DATA Paths:
+For fixed, there's no change in data path channel where data goes, for incr/wrap there's change in data channel (Read in more detailed and clean way)
